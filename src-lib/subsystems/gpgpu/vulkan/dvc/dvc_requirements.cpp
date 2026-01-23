@@ -1,0 +1,12 @@
+#include <vulkan/vulkan.h>
+#include <array>
+#include <cstdint>
+
+std::array<const char*, 5> required_dvc_extensions_names
+{
+	VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+	VK_KHR_CREATE_RENDERPASS_2_EXTENSION_NAME,
+	VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
+	VK_KHR_SEPARATE_DEPTH_STENCIL_LAYOUTS_EXTENSION_NAME,
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
