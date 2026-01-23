@@ -12,7 +12,7 @@ namespace nxcraft
 			std::string app_executable_name;
 		};
 
-		static Globals globs;
+		Globals globs;
 
 		AppCore();
 		~AppCore();

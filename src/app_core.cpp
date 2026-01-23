@@ -5,7 +5,7 @@ namespace nxcraft
 {
 	AppCore::AppCore()
 	{
-
+		AppCore::globs.app_executable_name = NXC_APP_NAME;
 	}
 	AppCore::~AppCore()
 	{
@@ -13,15 +13,13 @@ namespace nxcraft
 	}
 	void main()
 	{
-		AppCore::globs.app_executable_name = NXC_APP_NAME;
-
 		SDL_Event events;
 		
 		while (SDL_PollEvent(&events))
 		{
 			if (events.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED)
 			{
-				AppCore::globs.app_quit = true;
+				this->globs.app_quit = true;
 			}
 		}
 	}

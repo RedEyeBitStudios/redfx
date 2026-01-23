@@ -12,6 +12,7 @@ file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
 
 set(CMAKE_CONFIGURATION_TYPES Debug;Release)
 set(CMAKE_DEBUG_POSTFIX -dev)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(MEMORY_TRACKING "Enables address sanitizer." OFF)
 
@@ -35,6 +36,25 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 message(STATUS "MEMORY_TRACKING: ${MEMORY_TRACKING}")
 
 target_sources(${PROJECT_NAME} PRIVATE
+    "src-lib/err/gpgpu/vulkan/logical_device_creation_failed.cpp"
+    "src-lib/err/gpgpu/vulkan/no_compatible_device_found.cpp"
+    "src-lib/err/gpgpu/vulkan/system_connection_failure_sdl.cpp"
+    "src-lib/err/gpgpu/vulkan/system_connection_failure.cpp"
+    "src-lib/err/vid/window_append.cpp"
+    "src-lib/err/vid/window_name_in_use.cpp"
+    "src-lib/subsystems/logger/logger.cpp"
+    "src-lib/subsystems/logger/message.cpp"
+    #"src-lib/subsystems/accel/vulkan/window_internals.cpp"
+    "src-lib/subsystems/gpgpu/base/root.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/dvc/dvc_requirements.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/dvc/dctor.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/dvc/dvc_info.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/mem_manager/allocation.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/mem_manager/dctor.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/mem_manager/deallocation.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/root/root.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/root/wnd_ext_handling.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/root/handling/presentation.cpp"
     "src-lib/subsystems/time/time_root.cpp"
     "src-lib/subsystems/time/registry.cpp"
     "src-lib/subsystems/time/point.cpp"
@@ -42,6 +62,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     "src-lib/subsystems/vid/windows.cpp"
     "src-lib/subsystems/subsystems.cpp"
     "src-lib/main.cpp"
+    "src-lib/file_handler.cpp"
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE
     "SDL3"
@@ -58,7 +79,7 @@ if (${MEMORY_TRACKING})
     )
     target_compile_options(${PROJECT_NAME} PRIVATE
         -fsanitize=address -g
-    )
+    ) 
 endif()
 
 

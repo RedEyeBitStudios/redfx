@@ -1,15 +1,18 @@
 #include <internals/subsystems/vid/vidroot.hpp>
+#include <subsystems.hpp>
 #include <SDL3/SDL_init.h>
 #include <span>
 
 using ClassImpl = nxcraft::intern::subsystems::VidRoot;
-
+ 
 
 ClassImpl::VidRoot()
 {
+	nxcraft::Subsystems::getSubsystem_Logger().registerHeader(this, "SubsystemVideo");
 	SDL_Init(SDL_INIT_VIDEO);
 
 	this->loadDisplayModes();
+	NXC_LOG_HELPER("Initializing windows registry...");
 	this->component_wnd_registry = std::make_unique<ClassImpl::VidWindows>();
 }
 ClassImpl::~VidRoot()
@@ -18,6 +21,7 @@ ClassImpl::~VidRoot()
 }
 void ClassImpl::loadDisplayModes()
 {
+	NXC_LOG_HELPER("Loading display modes...");
 	int modes_count = 0;
 	auto modes = SDL_GetFullscreenDisplayModes(SDL_GetPrimaryDisplay(), &modes_count);
 	this->fullscreen_modes.reserve(modes_count);

@@ -1,8 +1,18 @@
 #include <internals/subsystems/vid/vidroot.hpp>
 #include <ranges>
 #include <algorithm>
+#include <subsystems.hpp>
+#include <format>
+#include <type_traits>
+
+extern SDL_WindowFlags additional_flags;
 
 using ClassImpl = nxcraft::intern::subsystems::VidRoot::VidWindows;
+
+ClassImpl::VidWindows()
+{
+	nxcraft::Subsystems::getSubsystem_Logger().registerHeader(this, "SubsystemVideo::WindowsRegistry");
+}
 
 ClassImpl::~VidWindows()
 {
@@ -16,15 +26,16 @@ ClassImpl::VidWndInfo& ClassImpl::retrieve(std::string_view wnd_name)
 {
 	return this->wnd_pool[wnd_name.data()];
 }
-ClassImpl::Err_Append ClassImpl::append(std::string_view wnd_name, ClassImpl::VidWndInfo info)
+nxcraft::err::ErrorHolder ClassImpl::append(std::string_view wnd_name, ClassImpl::VidWndInfo info)
 {
-	if (info.handle != nullptr || info.accel_internals != nullptr || info.surf_handle != nullptr)
+	NXC_LOG_HELPER(std::format("Adding a window: {}", wnd_name));
+	if (info.handle != nullptr || info.gpgpu != nullptr || info.surf_handle != nullptr)
 	{
-		return Err_Append(nxcraft::err::Vid_WindowAppend("VidRoot-VidWindows-append-info-001: handle, surf_handle and accel_internals members must be nullptr."));
+		return std::make_unique<nxcraft::err::Vid_WindowAppend>();
 	}
 	if (std::ranges::contains(std::ranges::views::keys(this->wnd_pool), wnd_name))
 	{
-		return Err_Append(nxcraft::err::Vid_WindowNameInUse("VidRoot-VidWindows-append-wnd_name-001: wnd_name must be unique name, which does not exist in this->wnd_pool."));
+		return std::make_unique<nxcraft::err::Vid_WindowNameInUse>();
 	}
 
 	SDL_WindowFlags flags = 0;
@@ -34,6 +45,7 @@ ClassImpl::Err_Append ClassImpl::append(std::string_view wnd_name, ClassImpl::Vi
 	flags |= (info.flags & VidFlags::UNDECORATED ? SDL_WINDOW_BORDERLESS : 0);
 	flags |= (info.flags & VidFlags::FULLSCREEN ? SDL_WINDOW_FULLSCREEN : 0);
 	flags |= (info.flags & VidFlags::HIDDEN ? SDL_WINDOW_HIDDEN : 0);
+	flags |= additional_flags;
 
 	info.title.back() = '\0';
 
@@ -41,10 +53,15 @@ ClassImpl::Err_Append ClassImpl::append(std::string_view wnd_name, ClassImpl::Vi
 
 	if (info.flags & VidFlags::ACCEL)
 	{
-		// Call window registration in accel subsystem.
+		NXC_LOG_HELPER(std::format("Registering window: {}", wnd_name));
+		nxcraft::Subsystems::getSubsystem_Accel().registerWindow(info);
 	}
 
-	this->wnd_pool[wnd_name.data()] = info;
+	this->wnd_pool[wnd_name.data()] = std::move(info);
 
-	return Err_Append(nxcraft::err::NoError());
+	return nullptr;
+}
+ClassImpl::KeysSet ClassImpl::retrieveAllRegistered()
+{
+	return std::views::keys(this->wnd_pool);
 }

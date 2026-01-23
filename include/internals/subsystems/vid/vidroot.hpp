@@ -1,13 +1,14 @@
 #pragma once
 #include "../../bases/subsystem.hpp"
-#include <internals/bases/err.hpp>
+#include "../../bases/err.hpp"
+#include "../../bases/gpgpu/window_extension.hpp"
 #include <nx-utils/math/vec2.hpp>
 #include <cstdint>
 #include <vector>
 #include <span>
-#include <array>
 #include <SDL3/SDL_video.h>
 #include <unordered_map>
+#include <ranges>
 
 namespace nxcraft::intern::subsystems
 {
@@ -49,23 +50,20 @@ namespace nxcraft::intern::subsystems
 				Title title;
 				VidMode mode;
 				VidFlags flags;
-				void* accel_internals;
+				GPGPU_WindowExtension* gpgpu;
 			};
 
-			using Err_Append = std::variant
-			<
-				nxcraft::err::NoError,
-				nxcraft::err::Vid_WindowAppend,
-				nxcraft::err::Vid_WindowNameInUse
-			>;
 		private:
 			std::unordered_map<std::string, VidWndInfo> wnd_pool;
 		public:
-			VidWindows() = default;
+			VidWindows();
 			~VidWindows();
 
+			using KeysSet = decltype(std::views::keys(wnd_pool));
+
 			VidWndInfo& retrieve(std::string_view wnd_name);
-			Err_Append append(std::string_view wnd_name, VidWndInfo info);
+			nxcraft::err::ErrorHolder append(std::string_view wnd_name, VidWndInfo info);
+			KeysSet retrieveAllRegistered();
 		};
 
 	private:

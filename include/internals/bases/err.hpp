@@ -1,7 +1,9 @@
 #pragma once
-#include <variant>
 #include <string>
 #include <string_view>
+#include <memory>
+
+#define NXC_DECLARE_EXCEPTION(ExceptionName, ...) class ExceptionName : public intern::ErrorBase { public: ExceptionName(__VA_ARGS__); virtual ~ExceptionName() = default; }
 
 namespace nxcraft::intern::err
 {
@@ -21,22 +23,15 @@ namespace nxcraft::intern::err
 }
 namespace nxcraft::err
 {
-	using NoError = std::monostate;
-}
-namespace nxcraft::err
-{
 	namespace intern = nxcraft::intern::err;
 
-	class Vid_WindowAppend : public intern::ErrorBase
-	{
-	public:
-		Vid_WindowAppend(const char* str) : intern::ErrorBase(str) {}
-		virtual ~Vid_WindowAppend() = default;
-	};
-	class Vid_WindowNameInUse : public intern::ErrorBase
-	{
-	public:
-		Vid_WindowNameInUse(const char* str) : intern::ErrorBase(str) {}
-		virtual ~Vid_WindowNameInUse() = default;
-	};
+	using ErrorHolder = std::unique_ptr<intern::ErrorBase>;
+
+	NXC_DECLARE_EXCEPTION(Vid_WindowAppend);
+	NXC_DECLARE_EXCEPTION(Vid_WindowNameInUse);
+
+	NXC_DECLARE_EXCEPTION(GPGPU_Vulkan_SystemConnectionFailure, const int result);
+	NXC_DECLARE_EXCEPTION(GPGPU_Vulkan_SystemConnectionFailureSDL, std::string_view str);
+	NXC_DECLARE_EXCEPTION(GPGPU_Vulkan_NoCompatibleDeviceFound);
+	NXC_DECLARE_EXCEPTION(GPGPU_Vulkan_LogicalDeviceCreationFailed, const int result);
 }
