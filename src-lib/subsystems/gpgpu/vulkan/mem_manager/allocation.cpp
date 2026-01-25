@@ -65,7 +65,7 @@ static ClassImpl::MemManagerClasses::Resource bindMemory(const T* res, const siz
 	return ClassImpl::MemManagerClasses::Resource(*res);
 }
 
-ClassImpl::MemManagerClasses::MemBlock ClassImpl::allocate(const std::vector<VkImage*>& imgs, const std::vector<VkBuffer*>& bufs, VkMemoryPropertyFlags mem_flags)
+VkDeviceMemory ClassImpl::allocate(const std::vector<VkImage*>& imgs, const std::vector<VkBuffer*>& bufs, VkMemoryPropertyFlags mem_flags)
 {
 	size_t size_sum = 0;
 	std::vector<MemManagerClasses::MemBlockInfo::ResourceInfo> resources_info;
@@ -120,12 +120,12 @@ ClassImpl::MemManagerClasses::MemBlock ClassImpl::allocate(const std::vector<VkI
 		.allocationSize = size_sum,
 		.memoryTypeIndex = memory_index.value_or(0)
 	};
-	nxcraft::Subsystems::LogRoot::Message(this, std::format("Requested allocation of {} B.", size_sum));
+	nxcraft::Subsystems::LogRoot::Message(&this->memory_manager_data, std::format("Requested allocation of {} B.", size_sum));
 
 	VkDeviceMemory memory_block = VK_NULL_HANDLE;
 	if (const auto result = vkAllocateMemory(this->dvc, &allocate_info, nullptr, &memory_block); result != VK_SUCCESS)
 	{
-		nxcraft::Subsystems::LogRoot::Message(this, std::format("Allocation failed; error code: {}", static_cast<int>(result)), nxcraft::Subsystems::LogRoot::Message::Flags::MARK_AS_CRITICAL_ERROR);
+		nxcraft::Subsystems::LogRoot::Message(&this->memory_manager_data, std::format("Allocation failed; error code: {}", static_cast<int>(result)), nxcraft::Subsystems::LogRoot::Message::Flags::MARK_AS_CRITICAL_ERROR);
 		std::string msg;
 		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
 		{
@@ -143,7 +143,7 @@ ClassImpl::MemManagerClasses::MemBlock ClassImpl::allocate(const std::vector<VkI
 
 		nxcraft::Subsystems::LogRoot::Message
 		(
-			this,
+			&this->memory_manager_data,
 			msg, 
 			nxcraft::Subsystems::LogRoot::Message::Flags::MARK_AS_CRITICAL_ERROR | 
 			nxcraft::Subsystems::LogRoot::Message::Flags::SHOW_MESSAGE_BOX
@@ -154,17 +154,21 @@ ClassImpl::MemManagerClasses::MemBlock ClassImpl::allocate(const std::vector<VkI
 	{
 		std::visit
 		(
-			[this, &memory_block, res](auto&& v)
+			[this, &memory_block, &res](auto v)
 			{
-				using T = std::decay<decltype(v)>;
+				using T = std::decay_t<decltype(v)>;
 				
 				if constexpr (std::is_same_v<T, VkImage>)
 				{
-					vkBindImageMemory(this->dvc, *v, memory_block, res.bytes_offset);
+					vkBindImageMemory(this->dvc, v, memory_block, res.bytes_offset);
 				}
 				else if constexpr (std::is_same_v<T, VkBuffer>)
 				{
-					vkBindBufferMemory(this->dvc, *v, memory_block, res.bytes_offset);
+					vkBindBufferMemory(this->dvc, v, memory_block, res.bytes_offset);
+				}
+				else
+				{
+					static_assert(false, "Unknown branch.");
 				}
 			},
 			res.res
@@ -178,5 +182,5 @@ ClassImpl::MemManagerClasses::MemBlock ClassImpl::allocate(const std::vector<VkI
 		.resources = std::move(resources_info)
 	};
 
-	return static_cast<MemManagerClasses::MemBlock>(memory_block);
+	return memory_block;
 }

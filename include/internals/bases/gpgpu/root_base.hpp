@@ -4,6 +4,7 @@
 #include "window_extension.hpp"
 #include <optional>
 #include <vector>
+#include <unordered_map>
 
 namespace nxcraft::intern::subsystems
 {
@@ -16,6 +17,13 @@ namespace nxcraft::intern::subsystems
 			std::string driver;
 			uint64_t available_memory_bytes;
 			uint64_t estimated_allocation_usage_bytes;
+		};
+
+		class GPGPU_ProcessorStageResources
+		{
+		public:
+			GPGPU_ProcessorStageResources() = default;
+			virtual ~GPGPU_ProcessorStageResources() = default;
 		};
 
 		GPGPU_Device() = default;
@@ -44,8 +52,9 @@ namespace nxcraft::intern::subsystems
 
 		virtual void registerWindow(VidRoot::VidWindows::VidWndInfo& info) = 0;
 		virtual void requestRecreation(VidRoot::VidWindows::VidWndInfo& info) = 0;
-		virtual void handleUI(VidRoot::VidWindows::VidWndInfo& info) = 0;
-		virtual void requestPresentation(VidRoot::VidWindows::VidWndInfo& info) = 0;
+		//virtual void handleUI(VidRoot::VidWindows::VidWndInfo& info) = 0;
+		//virtual void requestPresentation(VidRoot::VidWindows::VidWndInfo& info) = 0;
+		virtual void handleWindow(VidRoot::VidWindows::VidWndInfo& info) = 0;
 		const std::optional<TextureFormatCompression> getCompressionFormat() const;
 	};
 }

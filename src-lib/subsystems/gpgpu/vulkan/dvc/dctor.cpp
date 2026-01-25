@@ -50,25 +50,18 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 		}
 	}
 
-	const auto queues = [&ph_dvc]() -> std::vector<VkQueueFamilyProperties2>
+	const auto queues = [&ph_dvc]() -> std::vector<VkQueueFamilyProperties>
 	{
 		uint32_t queues_count = 0;
-		vkGetPhysicalDeviceQueueFamilyProperties2(ph_dvc, &queues_count, nullptr);
-		std::vector<VkQueueFamilyProperties2> queues
-		(
-			queues_count,
-			VkQueueFamilyProperties2
-			{
-				.sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2
-			}
-		);
-		vkGetPhysicalDeviceQueueFamilyProperties2(ph_dvc, &queues_count, queues.data());
+		vkGetPhysicalDeviceQueueFamilyProperties(ph_dvc, &queues_count, nullptr);
+		std::vector<VkQueueFamilyProperties> queues(queues_count);
+		vkGetPhysicalDeviceQueueFamilyProperties(ph_dvc, &queues_count, queues.data());
 		return queues;
 	}();
 
 	struct LocalQueueInfo
 	{
-		VkQueueFlags flags;
+		std::vector<VkQueueFlags> flags;
 		float priority;
 		VkQueue* q_ptr;
 	};
@@ -78,31 +71,46 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 		// Graphics queue.
 		LocalQueueInfo
 		{
-			.flags = VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT | VkQueueFlagBits::VK_QUEUE_COMPUTE_BIT,
+			.flags 
+			{
+				VK_QUEUE_GRAPHICS_BIT,
+				VK_QUEUE_COMPUTE_BIT
+			},
 			.priority = 1.0f,
 			.q_ptr = &this->queues[ClassImpl::queue_name_graphics].handle
 		},
 		// Async queue.
 		LocalQueueInfo
 		{
-			.flags = VkQueueFlagBits::VK_QUEUE_COMPUTE_BIT,
+			.flags
+			{
+				VK_QUEUE_TRANSFER_BIT
+			},
 			.priority = 0.4f,
-			.q_ptr = &this->queues[ClassImpl::queue_name_async].handle
+			.q_ptr = &this->queues[ClassImpl::queue_name_async_transfer].handle
 		}
 	};
 	std::unordered_map<uint32_t, std::vector<LocalQueueInfo*>> queues_info_per_queue_family;
 
 	for (auto& v : queues_init_info)
 	{
-		for (auto& queue : std::views::reverse(queues))
+		uint32_t id = 0;
+		for (auto& queue : queues)
 		{
-			if (queue.queueFamilyProperties.queueFlags & v.flags)
+			int flags = 0;
+			for (auto flag : v.flags)
 			{
-				const auto id = static_cast<uint32_t>(&queue - queues.data());
-				queues_info_per_queue_family[id].push_back(&v);
-				break;
+				if (queue.queueFlags & flag)
+				{
+					flags++;
+				}
+			}
+			if (flags == v.flags.size())
+			{
+				id = &queue - queues.data();
 			}
 		}
+		queues_info_per_queue_family[id].push_back(&v);
 	}
 
 	std::unordered_map<uint32_t, std::vector<float>> priorities_per_queue_family;
@@ -114,7 +122,9 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 		{
 			priorities_per_queue_family[queue_info.first].push_back(q->priority);
 		}
-
+	}
+	for (auto& priority : priorities_per_queue_family)
+	{
 		queue_infos.push_back
 		(
 			VkDeviceQueueCreateInfo
@@ -122,9 +132,9 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 				.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 				.pNext = nullptr,
 				.flags = 0,
-				.queueFamilyIndex = queue_info.first,
-				.queueCount = static_cast<uint32_t>(priorities_per_queue_family[queue_info.first].size()),
-				.pQueuePriorities = reinterpret_cast<const float*>(priorities_per_queue_family[queue_info.first].data())
+				.queueFamilyIndex = priority.first,
+				.queueCount = static_cast<uint32_t>(priority.second.size()),
+				.pQueuePriorities = reinterpret_cast<const float*>(priority.second.data())
 			}
 		);
 	}
@@ -161,7 +171,6 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 	}
 	else
 	{
-		
 		for (auto& info : queues_info_per_queue_family)
 		{
 			uint32_t id = 0;
@@ -171,11 +180,15 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 				id++;
 			}
 		}
+
+		this->constructMemManager();
+		this->createProcessor();
 	}
 }
 ClassImpl::~GPGPU_Device_Vulkan()
 {
 	vkDeviceWaitIdle(this->dvc);
+	this->destroyProcessor();
 	this->destroyMemManager();
 
 	vkDestroyDevice(this->dvc, nullptr);

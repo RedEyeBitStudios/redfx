@@ -32,7 +32,7 @@ VkBool32 ClassImpl::debugCallback
 		nxcraft::Subsystems::LogRoot::Message(user_data, std::format("{}", callback_data->pMessage), (severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? LoggerRoot::Message::Flags::MARK_AS_CRITICAL_ERROR : LoggerRoot::Message::Flags(0)));
 		if (severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT && !error_already_hit)
 		{
-			nxcraft::Subsystems::LogRoot::Message(user_data, "Vulkan API error client detected.", LoggerRoot::Message::Flags::SHOW_MESSAGE_BOX | LoggerRoot::Message::Flags::MARK_AS_CRITICAL_ERROR);
+			nxcraft::Subsystems::LogRoot::Message(user_data, "Vulkan API internal client error detected.", LoggerRoot::Message::Flags::SHOW_MESSAGE_BOX | LoggerRoot::Message::Flags::MARK_AS_CRITICAL_ERROR);
 			error_already_hit = true;
 		}
 	}
@@ -43,6 +43,7 @@ ClassImpl::GPGPU_RootVulkan(nxcraft::err::ErrorHolder& err)
 {
 	nxcraft::Subsystems::getSubsystem_Logger().registerHeader(this, "SubsystemGPGPU");
 	nxcraft::Subsystems::LogRoot::Message(this, std::format("Initialization started.")); 
+	nxcraft::Subsystems::LogRoot::Message(this, "Selected API: Vulkan");
 
 	const VkApplicationInfo app_info
 	{
@@ -73,17 +74,18 @@ ClassImpl::GPGPU_RootVulkan(nxcraft::err::ErrorHolder& err)
 		return nullptr;
 	};
 
-	bool validation_layer_enabled = false;
 	std::vector<const char*> layers;
 	std::vector<const char*> extensions;
+
+	bool validation_enabled = false;
 	
 	if (auto result = check_layer("VK_LAYER_KHRONOS_validation"); result != nullptr)
 	{
+		validation_enabled = true;
+		nxcraft::Subsystems::LogRoot::Message(this, "Validation layer enabled.");
+		nxcraft::Subsystems::getSubsystem_Logger().registerHeader(&this->sys_debug_msg, "VULKAN-API");
 		layers.push_back(result);
 		extensions.push_back("VK_EXT_debug_utils");
-		nxcraft::Subsystems::LogRoot::Message(this, "Validation layer enabled."); 
-		validation_layer_enabled = true;
-		nxcraft::Subsystems::getSubsystem_Logger().registerHeader(&this->sys_debug_msg, "VULKAN-API");
 	}
 
 	if
@@ -96,9 +98,6 @@ ClassImpl::GPGPU_RootVulkan(nxcraft::err::ErrorHolder& err)
 			if (extensions_sdl != nullptr)
 			{
 				extensions.insert_range(extensions.begin(), std::span<const char* const>(extensions_sdl, extensions_count));
-				//std::ranges::insert
-				//std::vector<const char*> cache(extensions_count);
-				//std::ranges::copy(std::span(extensions, extensions_count), cache.data());
 				return true;
 			}
 			return false;
@@ -128,7 +127,7 @@ ClassImpl::GPGPU_RootVulkan(nxcraft::err::ErrorHolder& err)
 	}
 	else
 	{
-		if (validation_layer_enabled)
+		if (validation_enabled)
 		{
 			const VkDebugUtilsMessengerCreateInfoEXT debug_create_info
 			{
@@ -159,11 +158,6 @@ ClassImpl::GPGPU_RootVulkan(nxcraft::err::ErrorHolder& err)
 			this->primary_dvc = std::make_unique<GPGPU_Device_Vulkan>(ph_dvc, err);
 			const auto primary_info = this->primary_dvc->retrieveInfo();
 
-			SDL_DisplayMode mode{};
-			SDL_GetClosestFullscreenDisplayMode(SDL_GetPrimaryDisplay(), 0, 0, 0, false, &mode);
-
-			this->max_presentation_rate = std::chrono::nanoseconds(std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::seconds(1)).count() / static_cast<uint32_t>(mode.refresh_rate));
-
 			nxcraft::Subsystems::LogRoot::Message(this, std::format(fmt, primary_info.name, primary_info.driver));
 		}
 		else
@@ -175,7 +169,6 @@ ClassImpl::GPGPU_RootVulkan(nxcraft::err::ErrorHolder& err)
 }
 ClassImpl::~GPGPU_RootVulkan()
 {
-	// TODO: Deallocation of window GPGPU resources.
 	auto& vid_reg_root = nxcraft::Subsystems::getSubsystem_Video().getComponent_Registry();
 
 	for (auto& entry : vid_reg_root.retrieveAllRegistered())
@@ -269,7 +262,6 @@ VkPhysicalDevice ClassImpl::enumDevice()
 						if (queue.queueFamilyProperties.queueFlags & required_bit)
 						{
 							bits.insert(required_bit);
-							this->queue_family_index = (&queue - &queues.front());
 						}
 					}
 				}
@@ -364,33 +356,20 @@ VkPhysicalDevice ClassImpl::enumDevice()
 }
 void ClassImpl::registerWindow(VidRoot::VidWindows::VidWndInfo& info)
 {
-	// TODO: Window registration.
 	GPGPU_WindowExtension_Vulkan* wnd_ext = new GPGPU_WindowExtension_Vulkan();
 	info.gpgpu = wnd_ext;
 
 	SDL_Vulkan_CreateSurface(info.handle, this->sys_con, nullptr, &wnd_ext->surface);
 
-	this->makeWindowExtension(wnd_ext);
 	this->recreateSwapchain(info, wnd_ext);
+	this->makeWindowExtension(wnd_ext);
 }
-void ClassImpl::handleUI(VidRoot::VidWindows::VidWndInfo& info)
+void ClassImpl::handleWindow(VidRoot::VidWindows::VidWndInfo& info)
 {
-	/*
-	AccelWindowData* ptr = reinterpret_cast<AccelWindowData*>(info.accel_internals);
-
-	struct cBoxBufferUI
-	{
-		nexora_utils::math::f16vec2 lo_vertex;
-		nexora_utils::math::f16vec2 hi_vertex;
-		nexora_utils::math::f16vec4 color_rgba;
-	};
-	*/
-
-	// TODO
+	this->updateUI(info);
+	this->requestPresentation(info);
 }
 void ClassImpl::requestRecreation(VidRoot::VidWindows::VidWndInfo& info)
 {
-	
-	// TODO
+	this->recreateSwapchain(info, static_cast<GPGPU_WindowExtension_Vulkan*>(info.gpgpu));
 }
-

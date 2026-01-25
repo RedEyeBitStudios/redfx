@@ -9,8 +9,8 @@ void ClassImpl::constructMemManager()
 }
 void ClassImpl::destroyMemManager()
 {
-	for (auto& key : std::views::keys(this->memory_manager_data.allocated_blocks))
+	for (auto mem : std::views::keys(this->memory_manager_data.allocated_blocks))
 	{
-		vkFreeMemory(this->dvc, key, nullptr);
+		this->requestDeallocation(mem);
 	}
 }

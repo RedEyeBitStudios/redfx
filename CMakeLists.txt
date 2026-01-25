@@ -9,6 +9,7 @@ elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
 endif()
 
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/shaders/vulkan)
 
 set(CMAKE_CONFIGURATION_TYPES Debug;Release)
 set(CMAKE_DEBUG_POSTFIX -dev)
@@ -44,25 +45,28 @@ target_sources(${PROJECT_NAME} PRIVATE
     "src-lib/err/vid/window_name_in_use.cpp"
     "src-lib/subsystems/logger/logger.cpp"
     "src-lib/subsystems/logger/message.cpp"
-    #"src-lib/subsystems/accel/vulkan/window_internals.cpp"
     "src-lib/subsystems/gpgpu/base/root.cpp"
     "src-lib/subsystems/gpgpu/vulkan/dvc/dvc_requirements.cpp"
     "src-lib/subsystems/gpgpu/vulkan/dvc/dctor.cpp"
     "src-lib/subsystems/gpgpu/vulkan/dvc/dvc_info.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/dvc/dvc_processor_stage_resources.cpp"
     "src-lib/subsystems/gpgpu/vulkan/mem_manager/allocation.cpp"
     "src-lib/subsystems/gpgpu/vulkan/mem_manager/dctor.cpp"
     "src-lib/subsystems/gpgpu/vulkan/mem_manager/deallocation.cpp"
     "src-lib/subsystems/gpgpu/vulkan/root/root.cpp"
     "src-lib/subsystems/gpgpu/vulkan/root/wnd_ext_handling.cpp"
     "src-lib/subsystems/gpgpu/vulkan/root/handling/presentation.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/root/handling/update_ui.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/stage_ui_colorbox.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/processor_stages/render_ui_colorbox.cpp"
     "src-lib/subsystems/time/time_root.cpp"
     "src-lib/subsystems/time/registry.cpp"
     "src-lib/subsystems/time/point.cpp"
     "src-lib/subsystems/vid/vidroot.cpp"
     "src-lib/subsystems/vid/windows.cpp"
     "src-lib/subsystems/subsystems.cpp"
+    "src-lib/utils/file_utils.cpp"
     "src-lib/main.cpp"
-    "src-lib/file_handler.cpp"
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE
     "SDL3"
@@ -82,5 +86,16 @@ if (${MEMORY_TRACKING})
     ) 
 endif()
 
+set(VULKAN_SHADER_SOURCES 
+    "ui.comp"
+)
+
+foreach(SHADER_ENTRY ${VULKAN_SHADER_SOURCES})
+    message(STATUS "Compiling Vulkan shaders")
+    execute_process(
+        COMMAND glslangValidator --target-env vulkan1.1 -R "${CMAKE_SOURCE_DIR}/src-shaders/vulkan/${SHADER_ENTRY}" -o "${SHADER_ENTRY}.spv"
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/shaders/vulkan
+    )
+endforeach()
 
 # clear && cmake -B build -G "Ninja Multi-Config" -DCMAKE_SYSTEM_PROCESSOR=x86_64 && ninja -C build -f build-Debug.ninja && ninja -C build -f build-Release.ninja

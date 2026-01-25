@@ -4,6 +4,7 @@
 #include <stdfloat>
 #include <unordered_map>
 #include "../../../bases/gpgpu/root_base.hpp"
+#include <concepts>
 
 namespace nxcraft::intern::subsystems
 {
@@ -51,13 +52,20 @@ namespace nxcraft::intern::subsystems
 				};
 				std::vector<ResourceInfo> resources;
 			};
-			using MemBlock = VkDeviceMemory;	
 		};
 	protected:
 		DeviceInfo dvc_info;
 		DriverUUID driver_cache_uuid;
 		VkPhysicalDevice ph_dvc;
 		VkDevice dvc;
+
+		std::unordered_map<std::string_view, std::unique_ptr<GPGPU_ProcessorStageResources>> processor_data;
+
+		template<typename T>
+		void makeProcessor() requires(std::is_base_of_v<GPGPU_ProcessorStageResources, T>)
+		{
+			this->processor_data[typeid(T).name()] = std::move(std::make_unique<T>(this->getCommons()));
+		}
 
 		std::unordered_map<std::string_view, QueuePair> queues;
 		struct
@@ -68,6 +76,9 @@ namespace nxcraft::intern::subsystems
 		void constructMemManager();
 		void destroyMemManager();
 
+		void createProcessor();
+		void destroyProcessor();
+
 		struct
 		{
 			VkCommandPool cmd_allocation = VK_NULL_HANDLE;
@@ -75,7 +86,7 @@ namespace nxcraft::intern::subsystems
 		} asyncs;
 	public:
 		constexpr static const char* queue_name_graphics = "graphics";
-		constexpr static const char* queue_name_async = "async_background";
+		constexpr static const char* queue_name_async_transfer = "async_background";
 
 		GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::ErrorHolder& err);
 		GPGPU_Device_Vulkan(GPGPU_Device_Vulkan&) = delete;
@@ -87,11 +98,17 @@ namespace nxcraft::intern::subsystems
 		const SurfaceCapabilities getSwapchainCapabilities(VkSurfaceKHR surf) const;
 		const Commons getCommons() const;
 
-		MemManagerClasses::MemBlock allocate(const std::vector<VkImage*>& imgs, const std::vector<VkBuffer*>& bufs, VkMemoryPropertyFlags mem_flags);
-		void requestDeallocation(const MemManagerClasses::MemBlock m);
-		const MemManagerClasses::MemBlockInfo getMemBlockInfo(const MemManagerClasses::MemBlock m);
+		VkDeviceMemory allocate(const std::vector<VkImage*>& imgs, const std::vector<VkBuffer*>& bufs, VkMemoryPropertyFlags mem_flags);
+		void requestDeallocation(const VkDeviceMemory m);
+		const MemManagerClasses::MemBlockInfo getMemBlockInfo(const VkDeviceMemory m);
 
 		void addTransferQueue(); // TODO: Add implementation of asynchronous transfer queue.
 		void submitTransfer();
+
+		template<typename T>
+		T* getProcessorStageData()
+		{
+			return reinterpret_cast<T*>(this->processor_data[typeid(T).name()].get());
+		}
 	};
 }

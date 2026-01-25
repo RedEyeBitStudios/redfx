@@ -9,6 +9,8 @@ namespace nxcraft::intern::subsystems
 	class GPGPU_WindowExtension_Vulkan : public GPGPU_WindowExtension
 	{
 	public:
+		static constexpr const size_t ui_frames_count = 3;
+
 		GPGPU_WindowExtension_Vulkan(GPGPU_WindowExtension_Vulkan&) = delete;
 		GPGPU_WindowExtension_Vulkan(GPGPU_WindowExtension_Vulkan&&) = delete;
 
@@ -18,10 +20,18 @@ namespace nxcraft::intern::subsystems
 		VkSwapchainKHR swp = VK_NULL_HANDLE;
 		VkSurfaceKHR surface = VK_NULL_HANDLE;
 		VkSemaphore acquire_semaphore = VK_NULL_HANDLE;
+		VkSemaphore ui_render_semaphore = VK_NULL_HANDLE;
 
-		GPGPU_Device_Vulkan::MemManagerClasses::MemBlock memory_gfx;
-		GPGPU_Device_Vulkan::MemManagerClasses::MemBlock memory_ui;
-		GPGPU_Device_Vulkan::MemManagerClasses::MemBlock memory_present;
+		VkDeviceMemory memory_gfx;
+		
+		struct
+		{
+			struct
+			{
+				VkDeviceMemory resizable_memory_blocks;
+				VkDeviceMemory constant_memory_blocks;
+			} ui;
+		} allocations;
 
 		struct
 		{
@@ -32,9 +42,11 @@ namespace nxcraft::intern::subsystems
 
 		struct
 		{
-			std::unique_ptr<FramesDataUnit_Vulkan<FrameData_Vulkan_Present>> presentation;
-			//FramesDataUnit_Vulkan<FrameData_Vulkan_GFX> gfx;
-			//FramesDataUnit_Vulkan<FrameData_Vulkan_UI> ui;
+			std::unique_ptr<FramesDataUnit_Vulkan<GPGPU_FrameData_Vulkan_Present>> presentation;
+			std::unique_ptr<FramesDataUnit_Vulkan<GPGPU_FrameData_Vulkan_UI>> ui;
+			//FramesDataUnit_Vulkan<GPGPU_FrameData_Vulkan_GFX> gfx;
 		} frames;
 	};
+
+	using GPGPU_Processor_Vulkan = void(*)(GPGPU_WindowExtension_Vulkan* ext);
 }

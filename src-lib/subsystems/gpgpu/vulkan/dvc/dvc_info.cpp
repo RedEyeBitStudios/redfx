@@ -17,7 +17,7 @@ const ClassImpl::QueuePair ClassImpl::getQueue(std::string_view name)
 {
 	return this->queues[name];
 }
-const ClassImpl::MemManagerClasses::MemBlockInfo ClassImpl::getMemBlockInfo(const MemManagerClasses::MemBlock m)
+const ClassImpl::MemManagerClasses::MemBlockInfo ClassImpl::getMemBlockInfo(const VkDeviceMemory m)
 {
 	return this->memory_manager_data.allocated_blocks[m];
 }

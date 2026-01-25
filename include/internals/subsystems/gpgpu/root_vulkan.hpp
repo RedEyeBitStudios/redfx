@@ -27,10 +27,11 @@ namespace nxcraft::intern::subsystems
 		VkDebugUtilsMessengerEXT sys_debug_msg = VK_NULL_HANDLE;
 
 		std::unique_ptr<GPGPU_Device_Vulkan> primary_dvc;
-		uint32_t queue_family_index;
 
 		VkPhysicalDevice enumDevice();
 		void recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_WindowExtension_Vulkan* wnd_ext);
+		void requestPresentation(VidRoot::VidWindows::VidWndInfo& info);
+		void updateUI(VidRoot::VidWindows::VidWndInfo& info);
 	protected:
 		void clearWindowExtension(GPGPU_WindowExtension* ext) override;
 		void makeWindowExtension(GPGPU_WindowExtension* ext) override;
@@ -42,8 +43,7 @@ namespace nxcraft::intern::subsystems
 
 		void registerWindow(VidRoot::VidWindows::VidWndInfo& info) override;
 		void requestRecreation(VidRoot::VidWindows::VidWndInfo& info) override;
-		void handleUI(VidRoot::VidWindows::VidWndInfo& info) override;
-		void requestPresentation(VidRoot::VidWindows::VidWndInfo& info) override;
+		void handleWindow(VidRoot::VidWindows::VidWndInfo& info) override;
 	};
 }
 

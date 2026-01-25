@@ -6,7 +6,7 @@
 
 namespace nxcraft::intern::subsystems
 {
-	class FrameData_Vulkan : public FrameData
+	class GPGPU_FrameData_Vulkan : public GPGPU_FrameData
 	{
 	public:
 		VkCommandBuffer cmd = VK_NULL_HANDLE;
@@ -30,9 +30,13 @@ namespace nxcraft::intern::subsystems
 		{
 			return (this->current_frame_id + 1) % this->frames.size();
 		}
+		uint32_t decrement()
+		{
+			return (this->current_frame_id - 1) % this->frames.size();
+		}
 	};
 
-	class FrameData_Vulkan_Present : public FrameData_Vulkan
+	class GPGPU_FrameData_Vulkan_Present : public GPGPU_FrameData_Vulkan
 	{
 	public:
 		VkImage presentation_buffer = VK_NULL_HANDLE;
@@ -42,14 +46,18 @@ namespace nxcraft::intern::subsystems
 		VkSemaphore cmd_semaphore = VK_NULL_HANDLE;
 	};
 
-	class FrameData_Vulkan_UI : public FrameData_Vulkan
+	class GPGPU_FrameData_Vulkan_UI : public GPGPU_FrameData_Vulkan
 	{
 	public:
-		VkImage framebuffer = VK_NULL_HANDLE;
-		VkImageView framebuffer_view = VK_NULL_HANDLE;
+		VkImage color_framebuffer = VK_NULL_HANDLE;
+		VkImageView color_framebuffer_view = VK_NULL_HANDLE;
+		VkBuffer color_box_uniform_buffer = VK_NULL_HANDLE;
+		VkFence cmd_fence = VK_NULL_HANDLE;
+
+		VkDescriptorSet desc_set;
 	};
 
-	class FrameData_Vulkan_GFX : public FrameData_Vulkan
+	class GPGPU_FrameData_Vulkan_GFX : public GPGPU_FrameData_Vulkan
 	{
 	public:
 		VkImage framebuffer = VK_NULL_HANDLE;

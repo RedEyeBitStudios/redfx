@@ -6,7 +6,7 @@
 
 enum SubsystemName : size_t
 {
-	SUB_ACCEL,
+	SUB_GPGPU,
 	SUB_VIDEO,
 	SUB_TIME,
 	SUB_LOG
@@ -26,10 +26,10 @@ ClassImpl::Subsystems()
 
 	nxcraft::err::ErrorHolder err = nullptr;
 	#ifdef __linux__
-		subs[SubsystemName::SUB_ACCEL] = new nxcraft::intern::subsystems::GPGPU_RootVulkan(err);
+		subs[SubsystemName::SUB_GPGPU] = new nxcraft::intern::subsystems::GPGPU_RootVulkan(err);
 		additional_flags = SDL_WINDOW_VULKAN;
 	#elif _WIN64
-		subs[SubsystemName::SUB_ACCEL] = new nxcraft::intern::subsystems::GPGPU_RootVulkan(err);
+		subs[SubsystemName::SUB_GPGPU] = new nxcraft::intern::subsystems::GPGPU_RootVulkan(err);
 		additional_flags = SDL_WINDOW_VULKAN;
 	#else
 		#error "No GPGPU acceleration supported."
@@ -39,7 +39,7 @@ ClassImpl::Subsystems()
 	{
 		ClassImpl::LogRoot::Message
 		(
-			nullptr,
+			subs[SubsystemName::SUB_GPGPU],
 			err->msg,
 			ClassImpl::LogRoot::Message::MARK_AS_CRITICAL_ERROR | 
 			ClassImpl::LogRoot::Message::SHOW_MESSAGE_BOX
@@ -68,7 +68,7 @@ ClassImpl::VidRoot& ClassImpl::getSubsystem_Video()
 }
 ClassImpl::AccelRoot& ClassImpl::getSubsystem_Accel()
 {
-	return *static_cast<ClassImpl::AccelRoot*>(subs[SubsystemName::SUB_ACCEL]);
+	return *static_cast<ClassImpl::AccelRoot*>(subs[SubsystemName::SUB_GPGPU]);
 }
 void ClassImpl::main()
 {
