@@ -184,3 +184,107 @@ VkDeviceMemory ClassImpl::allocate(const std::vector<VkImage*>& imgs, const std:
 
 	return memory_block;
 }
+VkDeviceMemory ClassImpl::allocate_bda(const std::vector<VkBuffer*>& bufs, VkMemoryPropertyFlags mem_flags)
+{
+	size_t size_sum = 0;
+	std::vector<MemManagerClasses::MemBlockInfo::ResourceInfo> resources_info;
+	std::optional<uint32_t> memory_index = std::nullopt;
+	for (auto& buf : bufs)
+	{
+		const auto requirements = getMemoryRequirements(*buf, this->dvc);
+		const size_t required_size = computeRequiredSize(requirements);
+
+		resources_info.push_back
+		(
+			MemManagerClasses::MemBlockInfo::ResourceInfo
+			{
+				.bytes_offset = size_sum,
+				.res = MemManagerClasses::Resource(*buf)
+			}
+		);
+
+		size_sum += required_size;
+
+		if (!memory_index.has_value())
+		{
+			memory_index = queryMemoryTypeIndex(mem_flags, requirements.memoryTypeBits, this->ph_dvc);
+		}
+	}
+	const VkMemoryAllocateFlagsInfoKHR flags_info
+	{
+		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO_KHR,
+		.pNext = nullptr,
+		.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT_KHR,
+		.deviceMask = 0
+	};
+	const VkMemoryAllocateInfo allocate_info
+	{
+		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		.pNext = &flags_info,
+		.allocationSize = size_sum,
+		.memoryTypeIndex = memory_index.value_or(0)
+	};
+	nxcraft::Subsystems::LogRoot::Message(&this->memory_manager_data, std::format("Requested allocation of {} B with BufferDeviceAddress feature.", size_sum));
+
+	VkDeviceMemory memory_block = VK_NULL_HANDLE;
+	if (const auto result = vkAllocateMemory(this->dvc, &allocate_info, nullptr, &memory_block); result != VK_SUCCESS)
+	{
+		nxcraft::Subsystems::LogRoot::Message(&this->memory_manager_data, std::format("Allocation failed; error code: {}", static_cast<int>(result)), nxcraft::Subsystems::LogRoot::Message::Flags::MARK_AS_CRITICAL_ERROR);
+		std::string msg;
+		if (result == VK_ERROR_OUT_OF_DEVICE_MEMORY)
+		{
+			msg = std::format("VulkanAllocator: Application can not continue; Not enough video processor memory.", static_cast<int>(result));
+			
+		}
+		else if (result == VK_ERROR_OUT_OF_HOST_MEMORY)
+		{
+			msg = std::format("VulkanAllocator: Application can not continue; Not enough processor memory.", static_cast<int>(result));
+		}
+		else
+		{
+			msg = std::format("VulkanAllocator: Application can not continue; Unknown error.", static_cast<int>(result));
+		}
+
+		nxcraft::Subsystems::LogRoot::Message
+		(
+			&this->memory_manager_data,
+			msg, 
+			nxcraft::Subsystems::LogRoot::Message::Flags::MARK_AS_CRITICAL_ERROR | 
+			nxcraft::Subsystems::LogRoot::Message::Flags::SHOW_MESSAGE_BOX
+		);
+	}
+
+	for (auto& res : resources_info)
+	{
+		std::visit
+		(
+			[this, &memory_block, &res](auto v)
+			{
+				using T = std::decay_t<decltype(v)>;
+				
+				if constexpr (std::is_same_v<T, VkImage>)
+				{
+					vkBindImageMemory(this->dvc, v, memory_block, res.bytes_offset);
+				}
+				else if constexpr (std::is_same_v<T, VkBuffer>)
+				{
+					vkBindBufferMemory(this->dvc, v, memory_block, res.bytes_offset);
+				}
+				else
+				{
+					static_assert(false, "Unknown branch.");
+				}
+			},
+			res.res
+		);
+	}
+
+	this->memory_manager_data.allocated_blocks[memory_block] = MemManagerClasses::MemBlockInfo
+	{
+		.size_summary = size_sum,
+		.mem_flags = mem_flags,
+		.resources = std::move(resources_info)
+	};
+
+	return memory_block;
+}

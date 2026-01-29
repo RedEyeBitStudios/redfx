@@ -44,6 +44,16 @@ namespace nxcraft::intern::subsystems
 		void registerWindow(VidRoot::VidWindows::VidWndInfo& info) override;
 		void requestRecreation(VidRoot::VidWindows::VidWndInfo& info) override;
 		void handleWindow(VidRoot::VidWindows::VidWndInfo& info) override;
+
+		
+/*
+		reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(this->sys_con, "vkDestroyDebugUtilsMessengerEXT"))
+		(
+			this->sys_con,
+			this->sys_debug_msg,
+			nullptr
+		);
+		*/
 	};
 }
 

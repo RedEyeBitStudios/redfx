@@ -45,6 +45,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     "src-lib/err/vid/window_name_in_use.cpp"
     "src-lib/subsystems/logger/logger.cpp"
     "src-lib/subsystems/logger/message.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/dynamic_functions.cpp"
     "src-lib/subsystems/gpgpu/base/root.cpp"
     "src-lib/subsystems/gpgpu/vulkan/dvc/dvc_requirements.cpp"
     "src-lib/subsystems/gpgpu/vulkan/dvc/dctor.cpp"
@@ -57,6 +58,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     "src-lib/subsystems/gpgpu/vulkan/root/wnd_ext_handling.cpp"
     "src-lib/subsystems/gpgpu/vulkan/root/handling/presentation.cpp"
     "src-lib/subsystems/gpgpu/vulkan/root/handling/update_ui.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/root/handling/proc_stage.cpp"
     "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/stage_ui_colorbox.cpp"
     "src-lib/subsystems/gpgpu/vulkan/processor_stages/render_ui_colorbox.cpp"
     "src-lib/subsystems/time/time_root.cpp"
@@ -87,13 +89,14 @@ if (${MEMORY_TRACKING})
 endif()
 
 set(VULKAN_SHADER_SOURCES 
-    "ui.comp"
+    "ui_colorbox.vert"
+    "ui_colorbox.frag"
 )
 
+message(STATUS "Compiling Vulkan shaders")
 foreach(SHADER_ENTRY ${VULKAN_SHADER_SOURCES})
-    message(STATUS "Compiling Vulkan shaders")
     execute_process(
-        COMMAND glslangValidator --target-env vulkan1.1 -R "${CMAKE_SOURCE_DIR}/src-shaders/vulkan/${SHADER_ENTRY}" -o "${SHADER_ENTRY}.spv"
+        COMMAND glslangValidator --target-env vulkan1.1 "${CMAKE_SOURCE_DIR}/src-shaders/vulkan/${SHADER_ENTRY}" -o "${SHADER_ENTRY}.spv"
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/shaders/vulkan
     )
 endforeach()

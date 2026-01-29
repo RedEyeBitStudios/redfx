@@ -138,17 +138,41 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 			}
 		);
 	}
-	VkPhysicalDeviceFeatures core_features;
-	vkGetPhysicalDeviceFeatures(this->ph_dvc, &core_features);
-
+	VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR separate_depth_stencil_features
+	{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SEPARATE_DEPTH_STENCIL_LAYOUTS_FEATURES_KHR,
+		.pNext = nullptr,
+		.separateDepthStencilLayouts = true
+	};
+	VkPhysicalDeviceShaderFloat16Int8FeaturesKHR shader8_features
+	{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES_KHR,
+		.pNext = &separate_depth_stencil_features,
+		.shaderFloat16 = true,
+		.shaderInt8 = false
+	};
+	VkPhysicalDeviceBufferDeviceAddressFeaturesKHR bda_features
+	{
+		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR,
+		.pNext = &shader8_features,
+		.bufferDeviceAddress = true
+	};
+	const VkPhysicalDeviceFeatures core_features
+	{
+		.tessellationShader = true,
+		.fillModeNonSolid = true,
+		.samplerAnisotropy = true,
+		.shaderInt16 = true,
+	};
 	const VkPhysicalDeviceVulkan11Features features_core_11
 	{
 		.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES,
-		.pNext = nullptr,
+		.pNext = &bda_features,
 		.storageBuffer16BitAccess = true,
 		.uniformAndStorageBuffer16BitAccess = true,
 		.storagePushConstant16 = true,
-		.shaderDrawParameters = true
+		.storageInputOutput16 = true,
+		.shaderDrawParameters = true,
 	};
 	const VkDeviceCreateInfo dvc_creation_info
 	{

@@ -99,6 +99,7 @@ namespace nxcraft::intern::subsystems
 		const Commons getCommons() const;
 
 		VkDeviceMemory allocate(const std::vector<VkImage*>& imgs, const std::vector<VkBuffer*>& bufs, VkMemoryPropertyFlags mem_flags);
+		VkDeviceMemory allocate_bda(const std::vector<VkBuffer*>& bufs, VkMemoryPropertyFlags mem_flags);
 		void requestDeallocation(const VkDeviceMemory m);
 		const MemManagerClasses::MemBlockInfo getMemBlockInfo(const VkDeviceMemory m);
 

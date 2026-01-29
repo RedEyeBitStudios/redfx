@@ -5,7 +5,7 @@
 #include <span>
 #include <algorithm>
 #include <subsystems.hpp>
-#include <nx-utils/math/vec4.hpp>
+#include <internals/subsystems/gpgpu/vulkan/functions.hpp>
 
 using ClassImpl = nxcraft::intern::subsystems::GPGPU_RootVulkan;
 
@@ -127,8 +127,16 @@ ClassImpl::GPGPU_RootVulkan(nxcraft::err::ErrorHolder& err)
 	}
 	else
 	{
+		nxcraft::intern::vk::vkGetBufferDeviceAddressKHR = reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetInstanceProcAddr(this->sys_con, "vkGetBufferDeviceAddressKHR"));
+		nxcraft::intern::vk::vkCreateRenderPass2KHR = reinterpret_cast<PFN_vkCreateRenderPass2KHR>(vkGetInstanceProcAddr(this->sys_con, "vkCreateRenderPass2KHR"));
+		nxcraft::intern::vk::vkCmdBeginRenderPass2KHR = reinterpret_cast<PFN_vkCmdBeginRenderPass2KHR>(vkGetInstanceProcAddr(this->sys_con, "vkCmdBeginRenderPass2KHR"));
+		nxcraft::intern::vk::vkCmdEndRenderPass2KHR = reinterpret_cast<PFN_vkCmdEndRenderPass2KHR>(vkGetInstanceProcAddr(this->sys_con, "vkCmdEndRenderPass2KHR"));
+
 		if (validation_enabled)
 		{
+			nxcraft::intern::vk::vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(this->sys_con, "vkCreateDebugUtilsMessengerEXT"));
+			nxcraft::intern::vk::vkDestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(this->sys_con, "vkDestroyDebugUtilsMessengerEXT"));
+
 			const VkDebugUtilsMessengerCreateInfoEXT debug_create_info
 			{
 				.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
@@ -141,13 +149,7 @@ ClassImpl::GPGPU_RootVulkan(nxcraft::err::ErrorHolder& err)
 				.pfnUserCallback = &this->debugCallback,
 				.pUserData = &this->sys_debug_msg
 			};
-			reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(this->sys_con, "vkCreateDebugUtilsMessengerEXT"))
-			(
-				this->sys_con,
-				&debug_create_info,
-				nullptr,
-				&this->sys_debug_msg
-			);
+			nxcraft::intern::vk::vkCreateDebugUtilsMessengerEXT(this->sys_con, &debug_create_info, nullptr, &this->sys_debug_msg);
 		}
 		nxcraft::Subsystems::LogRoot::Message(this, "Checking for available devices...");
 
@@ -181,12 +183,7 @@ ClassImpl::~GPGPU_RootVulkan()
 
 	if (this->sys_debug_msg != VK_NULL_HANDLE)
 	{
-		reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(this->sys_con, "vkDestroyDebugUtilsMessengerEXT"))
-		(
-			this->sys_con,
-			this->sys_debug_msg,
-			nullptr
-		);
+		nxcraft::intern::vk::vkDestroyDebugUtilsMessengerEXT(this->sys_con, this->sys_debug_msg, nullptr);
 	}
 	if (this->sys_con)
 	{
@@ -202,7 +199,7 @@ VkPhysicalDevice ClassImpl::enumDevice()
 		ph_devices.resize(dvc_count);
 		vkEnumeratePhysicalDevices(this->sys_con, &dvc_count, ph_devices.data());
 	}
-	
+	   
 	for (auto& ph_dvc : ph_devices)
 	{
 		// Retrieve and check basic device properties.
@@ -367,7 +364,10 @@ void ClassImpl::registerWindow(VidRoot::VidWindows::VidWndInfo& info)
 void ClassImpl::handleWindow(VidRoot::VidWindows::VidWndInfo& info)
 {
 	this->updateUI(info);
-	this->requestPresentation(info);
+	if (reinterpret_cast<GPGPU_WindowExtension_Vulkan*>(info.gpgpu)->frames.ui->latest_frame != nullptr)
+	{
+		this->requestPresentation(info);
+	}
 }
 void ClassImpl::requestRecreation(VidRoot::VidWindows::VidWndInfo& info)
 {

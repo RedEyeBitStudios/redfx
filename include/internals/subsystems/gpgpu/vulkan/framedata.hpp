@@ -3,6 +3,7 @@
 #include <vulkan/vulkan.h>
 #include <memory>
 #include <vector>
+#include <nx-utils/math/vec2.hpp>
 
 namespace nxcraft::intern::subsystems
 {
@@ -10,6 +11,13 @@ namespace nxcraft::intern::subsystems
 	{
 	public:
 		VkCommandBuffer cmd = VK_NULL_HANDLE;
+
+		enum class FrameState
+		{
+			FREE,
+			RECORDED,
+			PENDING
+		};
 	};
 
 	template<typename T>
@@ -20,6 +28,7 @@ namespace nxcraft::intern::subsystems
 
 		std::vector<T> frames;
 		uint32_t current_frame_id = 0;
+		T* latest_frame = nullptr;
 
 		FramesDataUnit_Vulkan(const uint32_t size)
 		{
@@ -29,10 +38,6 @@ namespace nxcraft::intern::subsystems
 		uint32_t increment()
 		{
 			return (this->current_frame_id + 1) % this->frames.size();
-		}
-		uint32_t decrement()
-		{
-			return (this->current_frame_id - 1) % this->frames.size();
 		}
 	};
 
@@ -51,10 +56,21 @@ namespace nxcraft::intern::subsystems
 	public:
 		VkImage color_framebuffer = VK_NULL_HANDLE;
 		VkImageView color_framebuffer_view = VK_NULL_HANDLE;
+
+		VkImage depth_buffer = VK_NULL_HANDLE;
+		VkImageView depth_buffer_view = VK_NULL_HANDLE;
+
 		VkBuffer color_box_uniform_buffer = VK_NULL_HANDLE;
 		VkFence cmd_fence = VK_NULL_HANDLE;
+		VkBuffer uniform_buffer = VK_NULL_HANDLE;
+		VkDeviceAddress uniform_buffer_address;
 
-		VkDescriptorSet desc_set;
+		VkFramebuffer framebuffer;
+
+		nexora_utils::math::ui16vec2 update_bound_lo;
+		nexora_utils::math::ui16vec2 update_bound_hi;
+
+		FrameState state = FrameState::FREE;
 	};
 
 	class GPGPU_FrameData_Vulkan_GFX : public GPGPU_FrameData_Vulkan

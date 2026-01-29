@@ -29,7 +29,10 @@ namespace nxcraft::intern::subsystems
 			struct
 			{
 				VkDeviceMemory resizable_memory_blocks;
-				VkDeviceMemory constant_memory_blocks;
+				struct
+				{
+					VkDeviceMemory uniform_buffer_device;
+				} constant_memory_blocks;
 			} ui;
 		} allocations;
 

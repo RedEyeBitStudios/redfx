@@ -17,5 +17,12 @@ namespace nxcraft::intern::subsystems
 		GPGPU_ProcessorStageResources_Vulkan() = default;
 		virtual ~GPGPU_ProcessorStageResources_Vulkan() = default;
 		virtual void flush(const GPGPU_Device_Vulkan::Commons& commons) = 0;
+		static VkShaderModule makeShader(const GPGPU_Device_Vulkan::Commons& commons, std::string_view path);
+
+		template<typename T>
+		static consteval size_t has_alignment8()
+		{
+			return (sizeof(T) % 8 == 0 ? sizeof(T) : 0);
+		};
 	};
 }
