@@ -10,6 +10,7 @@ endif()
 
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/shaders/vulkan)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/tools)
 
 set(CMAKE_CONFIGURATION_TYPES Debug;Release)
 set(CMAKE_DEBUG_POSTFIX -dev)
@@ -36,15 +37,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 message(STATUS "MEMORY_TRACKING: ${MEMORY_TRACKING}")
 
-target_sources(${PROJECT_NAME} PRIVATE
+set(SRC_LIB_GPGPU
     "src-lib/err/gpgpu/vulkan/logical_device_creation_failed.cpp"
     "src-lib/err/gpgpu/vulkan/no_compatible_device_found.cpp"
     "src-lib/err/gpgpu/vulkan/system_connection_failure_sdl.cpp"
     "src-lib/err/gpgpu/vulkan/system_connection_failure.cpp"
-    "src-lib/err/vid/window_append.cpp"
-    "src-lib/err/vid/window_name_in_use.cpp"
-    "src-lib/subsystems/logger/logger.cpp"
-    "src-lib/subsystems/logger/message.cpp"
     "src-lib/subsystems/gpgpu/vulkan/dynamic_functions.cpp"
     "src-lib/subsystems/gpgpu/base/root.cpp"
     "src-lib/subsystems/gpgpu/vulkan/dvc/dvc_requirements.cpp"
@@ -61,13 +58,31 @@ target_sources(${PROJECT_NAME} PRIVATE
     "src-lib/subsystems/gpgpu/vulkan/root/handling/proc_stage.cpp"
     "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/stage_ui_colorbox.cpp"
     "src-lib/subsystems/gpgpu/vulkan/processor_stages/render_ui_colorbox.cpp"
+)
+set(SRC_LIB_VID
+    "src-lib/err/vid/window_append.cpp"
+    "src-lib/err/vid/window_name_in_use.cpp"
+    "src-lib/subsystems/vid/vidroot.cpp"
+    "src-lib/subsystems/vid/windows.cpp"
+)
+set(SRC_LIB_UI
+    "src-lib/ui/analyze_pages.cpp"
+    "src-lib/ui/analyze_windows.cpp"
+    "src-lib/ui/main.cpp"
+)
+
+target_sources(${PROJECT_NAME} PRIVATE
+    ${SRC_LIB_GPGPU}
+    ${SRC_LIB_VID}
+    ${SRC_LIB_UI}
+    "src-lib/subsystems/logger/logger.cpp"
+    "src-lib/subsystems/logger/message.cpp"
     "src-lib/subsystems/time/time_root.cpp"
     "src-lib/subsystems/time/registry.cpp"
     "src-lib/subsystems/time/point.cpp"
-    "src-lib/subsystems/vid/vidroot.cpp"
-    "src-lib/subsystems/vid/windows.cpp"
     "src-lib/subsystems/subsystems.cpp"
     "src-lib/utils/file_utils.cpp"
+    "src-lib/ui_class.cpp"
     "src-lib/main.cpp"
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -101,4 +116,5 @@ foreach(SHADER_ENTRY ${VULKAN_SHADER_SOURCES})
     )
 endforeach()
 
+add_subdirectory(${CMAKE_SOURCE_DIR}/src-tools)
 # clear && cmake -B build -G "Ninja Multi-Config" -DCMAKE_SYSTEM_PROCESSOR=x86_64 && ninja -C build -f build-Debug.ninja && ninja -C build -f build-Release.ninja

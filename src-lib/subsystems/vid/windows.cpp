@@ -20,6 +20,7 @@ ClassImpl::~VidWindows()
 	{
 		SDL_DestroyWindowSurface(wnd.handle);
 		SDL_DestroyWindow(wnd.handle);
+		delete wnd.ui_ext;
 	}
 }
 ClassImpl::VidWndInfo& ClassImpl::retrieve(std::string_view wnd_name)
@@ -56,6 +57,8 @@ nxcraft::err::ErrorHolder ClassImpl::append(std::string_view wnd_name, ClassImpl
 		NXC_LOG_HELPER(std::format("Registering window: {}", wnd_name));
 		nxcraft::Subsystems::getSubsystem_Accel().registerWindow(info);
 	}
+
+	info.ui_ext = new ContainerUI();
 
 	this->wnd_pool[wnd_name.data()] = std::move(info);
 

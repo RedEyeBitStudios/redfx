@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <SDL3/SDL_init.h>
 #include "internals/subsystems/gpgpu/root_vulkan.hpp"
+#include "../ui/ui_processor.hpp"
 
 enum SubsystemName : size_t
 {
@@ -70,10 +71,11 @@ ClassImpl::AccelRoot& ClassImpl::getSubsystem_Accel()
 {
 	return *static_cast<ClassImpl::AccelRoot*>(subs[SubsystemName::SUB_GPGPU]);
 }
-void ClassImpl::main()
-{
-}
 ClassImpl::LogRoot& ClassImpl::getSubsystem_Logger()
 {
 	return *static_cast<ClassImpl::LogRoot*>(subs[SubsystemName::SUB_LOG]);
+}
+void ClassImpl::main()
+{
+	nxcraft::intern::ProcessorUI::process();
 }

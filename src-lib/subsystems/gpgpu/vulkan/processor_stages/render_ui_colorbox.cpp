@@ -1,8 +1,38 @@
 #include "render_ui_colorbox.hpp"
 #include "../proc_stage_resources/stage_ui_colorbox.hpp"
 #include <internals/subsystems/gpgpu/vulkan/functions.hpp>
+#include <map>
 
 using ClassImpl = nxcraft::intern::subsystems::GPGPU_ProcessorStage_RenderUI_ColorBox;
+using ColorBoxList = std::map<uint8_t, nxcraft::intern::subsystems::GPGPU_ProcessorStageResources_UI_ColorBox::ColorBox>;
+
+namespace nxcraft::intern::subsystems
+{
+	static ColorBoxList makeColorBoxesList(VidRoot::VidWindows::VidWndInfo& info)
+	{
+		ColorBoxList cache;
+		for (auto& page : info.ui_ext->active)
+		{
+			for (auto& box : page->boxes)
+			{
+				if (!box.second.is_active) continue;
+
+				const auto color_array = *reinterpret_cast<const ui8vec4*>(&box.second.color_rgba);
+
+				
+
+				cache[box.second.depth] = GPGPU_ProcessorStageResources_UI_ColorBox::ColorBox
+				{
+					.lo_v = box.second.position_px,
+					.hi_v = box.second.position_px + box.second.wh_px,
+					.color_rgba =  f16vec4(color_array.w, color_array.z, color_array.y, color_array.x),
+					.stack_position = box.second.depth
+				};
+			}
+		}
+		return cache;
+	}
+}
 
 void ClassImpl::process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_ProcessorStageResources_Vulkan* resources, GPGPU_Device_Vulkan* device)
 {
@@ -70,23 +100,13 @@ void ClassImpl::process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_ProcessorSt
 
 	vkCmdPipelineBarrier(frame->cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 1, &buf_barrier_info, 0, nullptr);
 
-	std::vector<GPGPU_ProcessorStageResources_UI_ColorBox::ColorBox> boxes
+	const auto colorbox_list = makeColorBoxesList(info);
+	std::vector<GPGPU_ProcessorStageResources_UI_ColorBox::ColorBox> boxes{};
+	boxes.reserve(colorbox_list.size());
+	for (auto& box : colorbox_list)
 	{
-		GPGPU_ProcessorStageResources_UI_ColorBox::ColorBox
-		{
-			.lo_v = ui16vec2(0, 0),
-			.hi_v = ui16vec2(1920, 1080),
-			.color_rgba = f16vec4(0.0f16, 0.5f16, 0.0f16, 1.0f16),
-			.stack_position = 4
-		},
-		GPGPU_ProcessorStageResources_UI_ColorBox::ColorBox
-		{
-			.lo_v = ui16vec2(400, 60),
-			.hi_v = ui16vec2(420, 660),
-			.color_rgba = f16vec4(1.0f16, 0.0f16, 0.0f16, 0.5f16),
-			.stack_position = 150
-		},
-	};
+		boxes.push_back(box.second);
+	}
 	vkCmdUpdateBuffer(frame->cmd, frame->uniform_buffer, 0, std::span(boxes).size_bytes(), boxes.data());
 
 

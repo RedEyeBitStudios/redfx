@@ -40,16 +40,7 @@ f16vec2 getFrameBufferPosition(const u16vec2 lo, const u16vec2 hi)
 void main()
 {
 	const ColorBoxData box_data = registers.boxes.boxes_data[gl_InstanceIndex];
-	color_rgba = box_data.color_rgba;
-
-	vec2 v[4] = 
-	{
-		vec2(-0.5f, -0.5f),
-		vec2(-0.5f, 0.5f),
-		vec2(0.5f, -0.5f),
-		vec2(0.5f, 0.5f)
-	};
-
-	const f16vec2 pos = getFrameBufferPosition(box_data.lo_v, box_data.hi_v);
+	color_rgba = f16vec4(smoothstep(0.0f, 255.0f, vec4(box_data.color_rgba)));
+	
 	gl_Position = vec4(vec2(getFrameBufferPosition(box_data.lo_v, box_data.hi_v)), float(box_data.stack_position) / float(255.0f), 1.0f);
 }

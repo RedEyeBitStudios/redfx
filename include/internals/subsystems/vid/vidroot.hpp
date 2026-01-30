@@ -2,6 +2,7 @@
 #include "../../bases/subsystem.hpp"
 #include "../../bases/err.hpp"
 #include "../../bases/gpgpu/window_extension.hpp"
+#include "../../../ui_class.hpp"
 #include <nx-utils/math/vec2.hpp>
 #include <cstdint>
 #include <vector>
@@ -9,9 +10,17 @@
 #include <SDL3/SDL_video.h>
 #include <unordered_map>
 #include <ranges>
+#include <type_traits>
+#include <unordered_set>
 
 namespace nxcraft::intern::subsystems
 {
+	struct ContainerUI
+	{
+		std::unordered_map<std::string, std::unique_ptr<UI>> registered;
+		std::unordered_set<UI*> active;
+	};
+
 	class VidRoot : public SubsystemBase
 	{
 	public:
@@ -51,6 +60,7 @@ namespace nxcraft::intern::subsystems
 				VidMode mode;
 				VidFlags flags;
 				GPGPU_WindowExtension* gpgpu;
+				ContainerUI* ui_ext;
 			};
 
 		private:
@@ -64,6 +74,17 @@ namespace nxcraft::intern::subsystems
 			VidWndInfo& retrieve(std::string_view wnd_name);
 			nxcraft::err::ErrorHolder append(std::string_view wnd_name, VidWndInfo info);
 			KeysSet retrieveAllRegistered();
+			template<typename T>
+			void appendUI(std::string_view wnd_name, T& ui_ptr, bool as_active = false) requires (std::is_base_of_v<UI, T>)
+			{
+				auto wnd = &this->retrieve(wnd_name);
+				UI* ptr = static_cast<UI*>(&ui_ptr);
+				wnd->ui_ext->registered[std::move(ptr->page_name)].reset(ptr);
+				if (as_active)
+				{
+					wnd->ui_ext->active.insert(ptr);
+				}
+			}
 		};
 
 	private:
