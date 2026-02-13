@@ -10,7 +10,7 @@ void ClassImpl::clearWindowExtension(GPGPU_WindowExtension* ext)
 {
 	auto wnd_ext = static_cast<GPGPU_WindowExtension_Vulkan*>(ext);
 	const auto primary_commons = this->primary_dvc->getCommons();
-	vkQueueWaitIdle(this->primary_dvc->getQueue(GPGPU_Device_Vulkan::queue_name_graphics).handle);
+	vkQueueWaitIdle(this->primary_dvc->getQueue());
 
 	constexpr const auto cmd_allocations_size = sizeof(wnd_ext->cmd_allocations) / sizeof(VkCommandPool);
 	for (auto& cmd_allocation : std::span(reinterpret_cast<VkCommandPool*>(&wnd_ext->cmd_allocations), cmd_allocations_size))
@@ -46,14 +46,15 @@ void ClassImpl::makeWindowExtension(GPGPU_WindowExtension* ext)
 {
 	auto wnd_ext = static_cast<GPGPU_WindowExtension_Vulkan*>(ext);
 	const auto commons = this->primary_dvc->getCommons();
-	const auto queue = this->primary_dvc->getQueue(GPGPU_Device_Vulkan::queue_name_graphics);
+	uint32_t q_index = 0;
+	const auto queue = this->primary_dvc->getQueue(&q_index);
 
 	const VkCommandPoolCreateInfo cmd_pool_info
 	{
 		.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-		.queueFamilyIndex = queue.queue_family_index
+		.queueFamilyIndex = q_index
 	};
 
 	vkCreateCommandPool(commons.dvc, &cmd_pool_info, nullptr, &wnd_ext->cmd_allocations.present);
@@ -137,7 +138,7 @@ void ClassImpl::makeWindowExtension(GPGPU_WindowExtension* ext)
 void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_WindowExtension_Vulkan* wnd_ext)
 {
 	// TODO: Make sure everything are recreated as a swapchain itself is.
-	vkQueueWaitIdle(this->primary_dvc->getQueue(GPGPU_Device_Vulkan::queue_name_graphics).handle);
+	vkQueueWaitIdle(this->primary_dvc->getQueue());
 
 	const auto swp_capabilities = this->primary_dvc->getSwapchainCapabilities(wnd_ext->surface);
 	const auto commons = this->primary_dvc->getCommons();

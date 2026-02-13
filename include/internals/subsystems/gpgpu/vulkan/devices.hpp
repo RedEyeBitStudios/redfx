@@ -15,12 +15,6 @@ namespace nxcraft::intern::subsystems
 	public:
 		using DriverUUID = std::array<uint64_t, 2>;
 
-		struct QueuePair
-		{
-			VkQueue handle = VK_NULL_HANDLE;
-			uint32_t queue_family_index = 0;
-		};
-
 		struct Commons
 		{
 			VkPhysicalDevice ph_dvc;
@@ -67,7 +61,26 @@ namespace nxcraft::intern::subsystems
 			this->processor_data[typeid(T).name()] = std::move(std::make_unique<T>(this->getCommons()));
 		}
 
-		std::unordered_map<std::string_view, QueuePair> queues;
+		struct AsyncTransferData
+		{
+			VkQueue queue;
+			VkCommandPool cmd_allocation = VK_NULL_HANDLE;
+			VkCommandBuffer cmd;
+			VkFence fence;
+		};
+
+		struct
+		{
+			uint32_t queue_family_index = 0;
+			VkQueue handle;
+		} main_queue;
+
+		struct
+		{
+			std::optional<uint32_t> queue_family_index = std::nullopt;
+			std::vector<AsyncTransferData> queues;
+		} transfer_queues;
+		
 		struct
 		{
 			std::unordered_map<VkDeviceMemory, MemManagerClasses::MemBlockInfo> allocated_blocks;
@@ -79,22 +92,16 @@ namespace nxcraft::intern::subsystems
 		void createProcessor();
 		void destroyProcessor();
 
-		struct
-		{
-			VkCommandPool cmd_allocation = VK_NULL_HANDLE;
-			VkCommandBuffer cmd_transfer;
-		} asyncs;
+		void destroyTransferQueues();
 	public:
-		constexpr static const char* queue_name_graphics = "graphics";
-		constexpr static const char* queue_name_async_transfer = "async_background";
-
+		
 		GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::ErrorHolder& err);
 		GPGPU_Device_Vulkan(GPGPU_Device_Vulkan&) = delete;
 		GPGPU_Device_Vulkan(GPGPU_Device_Vulkan&&) = delete;
 		virtual ~GPGPU_Device_Vulkan();
 
 		GPGPU_Device::DeviceInfo retrieveInfo() override;
-		const QueuePair getQueue(std::string_view name);
+		const VkQueue getQueue(uint32_t* family_index = nullptr);
 		const SurfaceCapabilities getSwapchainCapabilities(VkSurfaceKHR surf) const;
 		const Commons getCommons() const;
 

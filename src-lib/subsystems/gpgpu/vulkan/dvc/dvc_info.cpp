@@ -13,9 +13,13 @@ ClassImpl::DeviceInfo ClassImpl::retrieveInfo()
 
 	return this->dvc_info;
 }
-const ClassImpl::QueuePair ClassImpl::getQueue(std::string_view name)
+const VkQueue ClassImpl::getQueue(uint32_t* family_index)
 {
-	return this->queues[name];
+	if (family_index != nullptr)
+	{
+		*family_index = this->main_queue.queue_family_index;
+	}
+	return this->main_queue.handle;
 }
 const ClassImpl::MemManagerClasses::MemBlockInfo ClassImpl::getMemBlockInfo(const VkDeviceMemory m)
 {

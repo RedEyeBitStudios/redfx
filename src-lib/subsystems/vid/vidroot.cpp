@@ -4,7 +4,6 @@
 #include <span>
 
 using ClassImpl = nxcraft::intern::subsystems::VidRoot;
- 
 
 ClassImpl::VidRoot()
 {
@@ -72,4 +71,9 @@ std::span<const ClassImpl::VidMode> ClassImpl::getAvailableVideoModes() const
 ClassImpl::VidWindows& ClassImpl::getComponent_Registry() const
 {
 	return *this->component_wnd_registry.get();
+}
+
+void ClassImpl::loadFonts()
+{
+
 }

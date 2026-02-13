@@ -42,5 +42,5 @@ void main()
 	const ColorBoxData box_data = registers.boxes.boxes_data[gl_InstanceIndex];
 	color_rgba = f16vec4(smoothstep(0.0f, 255.0f, vec4(box_data.color_rgba)));
 	
-	gl_Position = vec4(vec2(getFrameBufferPosition(box_data.lo_v, box_data.hi_v)), float(box_data.stack_position) / float(255.0f), 1.0f);
+	gl_Position = vec4(vec2(getFrameBufferPosition(box_data.lo_v, box_data.hi_v)), smoothstep(0.0f, 255.0f, float(box_data.stack_position)), 1.0f);
 }

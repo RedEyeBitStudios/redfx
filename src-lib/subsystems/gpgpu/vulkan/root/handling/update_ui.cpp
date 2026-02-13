@@ -10,7 +10,7 @@ void ClassImpl::updateUI(VidRoot::VidWindows::VidWndInfo& info)
 {
 	auto wnd_ext = static_cast<GPGPU_WindowExtension_Vulkan*>(info.gpgpu);
 	const auto commons = this->primary_dvc->getCommons();
-	const auto queue = this->primary_dvc->getQueue(GPGPU_Device_Vulkan::queue_name_graphics);
+	const auto queue = this->primary_dvc->getQueue();
 	auto next_frame = &wnd_ext->frames.ui->frames[wnd_ext->frames.ui->current_frame_id];
 
 	if (next_frame->state == GPGPU_FrameData_Vulkan::FrameState::FREE)
@@ -44,7 +44,7 @@ void ClassImpl::updateUI(VidRoot::VidWindows::VidWndInfo& info)
 			.pSignalSemaphores = nullptr
 		};
 	
-		vkQueueSubmit(this->primary_dvc->getQueue(GPGPU_Device_Vulkan::queue_name_graphics).handle, 1, &submit_info, next_frame->cmd_fence);
+		vkQueueSubmit(this->primary_dvc->getQueue(), 1, &submit_info, next_frame->cmd_fence);
 		next_frame->state = GPGPU_FrameData_Vulkan::FrameState::PENDING;
 	}
 	else if (next_frame->state == GPGPU_FrameData_Vulkan::FrameState::PENDING)

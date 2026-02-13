@@ -15,18 +15,16 @@ namespace nxcraft::intern::subsystems
 		{
 			for (auto& box : page->boxes)
 			{
-				if (!box.second.is_active) continue;
+				if (!(box.second.mask & UI::BoxProperties::BoxMask::IS_ACTIVE)) continue;				
 
 				const auto color_array = *reinterpret_cast<const ui8vec4*>(&box.second.color_rgba);
 
-				
-
-				cache[box.second.depth] = GPGPU_ProcessorStageResources_UI_ColorBox::ColorBox
+				cache[box.second.layer_id] = GPGPU_ProcessorStageResources_UI_ColorBox::ColorBox
 				{
 					.lo_v = box.second.position_px,
 					.hi_v = box.second.position_px + box.second.wh_px,
 					.color_rgba =  f16vec4(color_array.w, color_array.z, color_array.y, color_array.x),
-					.stack_position = box.second.depth
+					.stack_position = box.second.layer_id
 				};
 			}
 		}
@@ -38,9 +36,12 @@ void ClassImpl::process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_ProcessorSt
 {
 	auto wnd_ext = static_cast<GPGPU_WindowExtension_Vulkan*>(info.gpgpu);
 	auto frame = &wnd_ext->frames.ui->frames[wnd_ext->frames.ui->current_frame_id];
-	auto stage_resources = static_cast<GPGPU_ProcessorStageResources_UI_ColorBox*>(resources);	
-	auto queue = device->getQueue(GPGPU_Device_Vulkan::queue_name_graphics);
+	auto stage_resources = static_cast<GPGPU_ProcessorStageResources_UI_ColorBox*>(resources);
+	uint32_t q_index = 0;
+	auto queue = device->getQueue(&q_index);
 	auto commons = device->getCommons();
+
+	const auto colorbox_list = makeColorBoxesList(info);
 
 	VkBufferMemoryBarrier buf_barrier_info
 	{
@@ -48,8 +49,8 @@ void ClassImpl::process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_ProcessorSt
 		.pNext = nullptr,
 		.srcAccessMask = VK_ACCESS_NONE,
 		.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-		.srcQueueFamilyIndex = queue.queue_family_index,
-		.dstQueueFamilyIndex = queue.queue_family_index,
+		.srcQueueFamilyIndex = q_index,
+		.dstQueueFamilyIndex = q_index,
 		.buffer = frame->uniform_buffer,
 		.offset = 0,
 		.size = VK_WHOLE_SIZE
@@ -64,8 +65,8 @@ void ClassImpl::process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_ProcessorSt
 			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
 			.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 			.newLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-			.srcQueueFamilyIndex = queue.queue_family_index,
-			.dstQueueFamilyIndex = queue.queue_family_index,
+			.srcQueueFamilyIndex = q_index,
+			.dstQueueFamilyIndex = q_index,
 			.image = frame->depth_buffer,
 			.subresourceRange
 			{
@@ -84,8 +85,8 @@ void ClassImpl::process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_ProcessorSt
 			.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
 			.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 			.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			.srcQueueFamilyIndex = queue.queue_family_index,
-			.dstQueueFamilyIndex = queue.queue_family_index,
+			.srcQueueFamilyIndex = q_index,
+			.dstQueueFamilyIndex = q_index,
 			.image = frame->color_framebuffer,
 			.subresourceRange
 			{
@@ -100,14 +101,16 @@ void ClassImpl::process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_ProcessorSt
 
 	vkCmdPipelineBarrier(frame->cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 1, &buf_barrier_info, 0, nullptr);
 
-	const auto colorbox_list = makeColorBoxesList(info);
-	std::vector<GPGPU_ProcessorStageResources_UI_ColorBox::ColorBox> boxes{};
-	boxes.reserve(colorbox_list.size());
-	for (auto& box : colorbox_list)
+	if (!colorbox_list.empty())
 	{
-		boxes.push_back(box.second);
+		std::vector<GPGPU_ProcessorStageResources_UI_ColorBox::ColorBox> boxes{};
+		boxes.reserve(colorbox_list.size());
+		for (auto& box : colorbox_list)
+		{
+			boxes.push_back(box.second);
+		}
+		vkCmdUpdateBuffer(frame->cmd, frame->uniform_buffer, 0, std::span(boxes).size_bytes(), boxes.data());	
 	}
-	vkCmdUpdateBuffer(frame->cmd, frame->uniform_buffer, 0, std::span(boxes).size_bytes(), boxes.data());
 
 
 	buf_barrier_info.srcAccessMask = buf_barrier_info.dstAccessMask;
@@ -187,7 +190,7 @@ void ClassImpl::process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_ProcessorSt
 	vkCmdSetViewport(frame->cmd, 0, 1, &viewport);
 	vkCmdSetScissor(frame->cmd, 0, 1, &scissor);
 
-	vkCmdDraw(frame->cmd, 4, static_cast<uint32_t>(boxes.size()), 0, 0);
+	vkCmdDraw(frame->cmd, 4, static_cast<uint32_t>(colorbox_list.size()), 0, 0);
 
 	const VkSubpassEndInfo subpass_end_info
 	{

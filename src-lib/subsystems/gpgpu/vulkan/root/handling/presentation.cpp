@@ -7,7 +7,8 @@ void ClassImpl::requestPresentation(VidRoot::VidWindows::VidWndInfo& info)
 {
 	auto wnd_ext = static_cast<GPGPU_WindowExtension_Vulkan*>(info.gpgpu);
 	auto primary_commons = this->primary_dvc->getCommons();
-	auto primary_queue = this->primary_dvc->getQueue(GPGPU_Device_Vulkan::queue_name_graphics);
+	uint32_t q_index = 0;
+	auto primary_queue = this->primary_dvc->getQueue(&q_index);
 	auto ui_curr_frame = wnd_ext->frames.ui->latest_frame;
 
 	vkAcquireNextImageKHR(primary_commons.dvc, wnd_ext->swp, UINT64_MAX, wnd_ext->acquire_semaphore, nullptr, &wnd_ext->frames.presentation->current_frame_id);
@@ -31,8 +32,8 @@ void ClassImpl::requestPresentation(VidRoot::VidWindows::VidWndInfo& info)
 		.dstAccessMask = VK_ACCESS_MEMORY_WRITE_BIT,
 		.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
 		.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 
-		.srcQueueFamilyIndex = primary_queue.queue_family_index,
-		.dstQueueFamilyIndex = primary_queue.queue_family_index,
+		.srcQueueFamilyIndex = q_index,
+		.dstQueueFamilyIndex = q_index,
 		.image = curr_frame->presentation_buffer,
 		.subresourceRange
 		{
@@ -151,7 +152,7 @@ void ClassImpl::requestPresentation(VidRoot::VidWindows::VidWndInfo& info)
 		.signalSemaphoreCount = 1,
 		.pSignalSemaphores = &curr_frame->cmd_semaphore
 	};
-	vkQueueSubmit(primary_queue.handle, 1, &submit_info, curr_frame->cmd_fence);
+	vkQueueSubmit(primary_queue, 1, &submit_info, curr_frame->cmd_fence);
 	vkWaitForFences(primary_commons.dvc, 1, &curr_frame->cmd_fence, VK_TRUE, UINT64_MAX);
 	const VkPresentInfoKHR present_info
 	{
@@ -164,5 +165,5 @@ void ClassImpl::requestPresentation(VidRoot::VidWindows::VidWndInfo& info)
 		.pImageIndices = &wnd_ext->frames.presentation->current_frame_id,
 		.pResults = nullptr
 	};
-	vkQueuePresentKHR(primary_queue.handle, &present_info);
+	vkQueuePresentKHR(primary_queue, &present_info);
 }

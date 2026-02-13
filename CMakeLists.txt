@@ -36,6 +36,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 message(STATUS "MEMORY_TRACKING: ${MEMORY_TRACKING}")
+message(STATUS "TARGET ARCHITECTURE: ${CMAKE_SYSTEM_PROCESSOR}")
 
 set(SRC_LIB_GPGPU
     "src-lib/err/gpgpu/vulkan/logical_device_creation_failed.cpp"
@@ -70,11 +71,18 @@ set(SRC_LIB_UI
     "src-lib/ui/analyze_windows.cpp"
     "src-lib/ui/main.cpp"
 )
+set(SRC_LIB_RESOURCE_MANAGER
+    "src-lib/subsystems/resources_manager/root.cpp"
+    "src-lib/subsystems/resources_manager/resource_data_font.cpp"
+    "src-lib/subsystems/resources_manager/resource_data_redfxui.cpp"
+    "src-lib/subsystems/resources_manager/asynchronous_controller.cpp"
+)
 
 target_sources(${PROJECT_NAME} PRIVATE
     ${SRC_LIB_GPGPU}
     ${SRC_LIB_VID}
     ${SRC_LIB_UI}
+    ${SRC_LIB_RESOURCE_MANAGER}
     "src-lib/subsystems/logger/logger.cpp"
     "src-lib/subsystems/logger/message.cpp"
     "src-lib/subsystems/time/time_root.cpp"
@@ -88,6 +96,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
     "SDL3"
     "vulkan"
+    "freetype"
+    "tinyxml2"
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     NXC_APP_NAME="./${PROJECT_NAME}"
@@ -116,5 +126,5 @@ foreach(SHADER_ENTRY ${VULKAN_SHADER_SOURCES})
     )
 endforeach()
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/src-tools)
+#add_subdirectory(${CMAKE_SOURCE_DIR}/src-tools)
 # clear && cmake -B build -G "Ninja Multi-Config" -DCMAKE_SYSTEM_PROCESSOR=x86_64 && ninja -C build -f build-Debug.ninja && ninja -C build -f build-Release.ninja
