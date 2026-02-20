@@ -9,7 +9,7 @@ namespace nxcraft::intern::subsystems
 	class GPGPU_WindowExtension_Vulkan : public GPGPU_WindowExtension
 	{
 	public:
-		static constexpr const size_t ui_frames_count = 3;
+		static constexpr const size_t ui_frames_count = 2;
 
 		GPGPU_WindowExtension_Vulkan(GPGPU_WindowExtension_Vulkan&) = delete;
 		GPGPU_WindowExtension_Vulkan(GPGPU_WindowExtension_Vulkan&&) = delete;

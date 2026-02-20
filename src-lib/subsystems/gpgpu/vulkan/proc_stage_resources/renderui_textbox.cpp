@@ -9,7 +9,7 @@ ClassImpl::GPGPU_ProcessorStageResources_RenderUI_TextBox(const GPGPU_Device_Vul
 	{
 		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
 		.offset = 0,
-		.size = 32
+		.size = 16
 	};
 	for (auto& info : this->shaders)
 	{
@@ -115,7 +115,7 @@ ClassImpl::GPGPU_ProcessorStageResources_RenderUI_TextBox(const GPGPU_Device_Vul
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = 0,
-		.rasterizationSamples = VK_SAMPLE_COUNT_8_BIT,
+		.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT,
 		.sampleShadingEnable = true,
 		.minSampleShading = 0,
 		.pSampleMask = nullptr,

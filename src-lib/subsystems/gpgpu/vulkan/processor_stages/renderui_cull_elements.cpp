@@ -85,16 +85,6 @@ void ClassImpl::cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElement
 								}
 							);
 							resources.layers_data[layer_id].text_boxes_info[utf32_code]++;
-							/*
-							resources.layers_data[layer_id].text_boxes.push_back
-							(
-								std::decay_t<decltype(resources)>::UniformData_TextBox
-								{
-									.color_rgba = f16vec4(backward_rgba.w, backward_rgba.z, backward_rgba.y, backward_rgba.x),
-									.offset = box.position_px
-								}
-							);
-							*/
 						}
 						pos.x += box.size * next * aspect;
 					}

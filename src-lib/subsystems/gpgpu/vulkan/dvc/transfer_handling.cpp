@@ -58,6 +58,7 @@ void ClassImpl::submitTransfer()
 	}
 
 	if (this->transfer.asset_queue.empty()) return;
+	// TODO: All further instructions should be done asynchronously on separated thread.
 	nxcraft::Subsystems::LogRoot::Message(&this->transfer, std::format("Searching for available upload unit..."));
 	AsyncUploadUnit* selected_unit = nullptr;
 	

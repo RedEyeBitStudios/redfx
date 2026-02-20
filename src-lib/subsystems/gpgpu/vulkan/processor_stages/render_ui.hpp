@@ -1,6 +1,5 @@
 #pragma once
 #include <internals/subsystems/gpgpu/vulkan/processor.hpp>
-//#include "../proc_stage_resources/stage_ui_colorbox.hpp"
 #include "renderui_cull_elements.hpp"
 
 namespace nxcraft::intern::subsystems

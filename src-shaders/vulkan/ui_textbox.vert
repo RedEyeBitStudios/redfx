@@ -19,7 +19,6 @@ layout(buffer_reference) readonly buffer RenderDataBuffer
 layout(std430, push_constant) uniform Registers
 {
 	f16vec2 dimension_multiplier;
-	f16vec2 aspect_corrector;
 	RenderDataBuffer boxes;
 } registers;
 

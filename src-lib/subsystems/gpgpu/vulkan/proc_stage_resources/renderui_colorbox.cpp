@@ -113,7 +113,6 @@ ClassImpl::GPGPU_ProcessorStageResources_RenderUI_ColorBox(const GPGPU_Device_Vu
 		.pPushConstantRanges = &range
 	};
 	vkCreatePipelineLayout(commons.dvc, &pip_layout_info, nullptr, &this->render_pipeline.layout);
-	//prepareRenderPasses(this, commons);
 
 	const VkPipelineVertexInputStateCreateInfo vertex_input_info
 	{
@@ -164,7 +163,7 @@ ClassImpl::GPGPU_ProcessorStageResources_RenderUI_ColorBox(const GPGPU_Device_Vu
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = 0,
-		.rasterizationSamples = VK_SAMPLE_COUNT_8_BIT,
+		.rasterizationSamples = VK_SAMPLE_COUNT_4_BIT,
 		.sampleShadingEnable = false,
 		.minSampleShading = 0,
 		.pSampleMask = nullptr,

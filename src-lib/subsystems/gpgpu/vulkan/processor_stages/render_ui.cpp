@@ -160,20 +160,15 @@ void ClassImpl::renderLayer_TextBoxes(VidRoot::VidWindows::VidWndInfo& info, GPG
 	{
 		return;
 	}
-
-	//const uint32_t utf32_code = 0x00000041;
-	
 	std::vector<VkDeviceSize> buffers_offsets(1, 0);
 
 	struct
 	{
 		f16vec2 multiplier;
-		f16vec2 aspect;
 		VkDeviceAddress buffer_address;
 	} push_constant_data
 	{
 		.multiplier = f16vec2(1.0f16) / static_cast<f16vec2>(info.mode.wh),
-		.aspect = f16vec2(static_cast<std::float16_t>(info.mode.wh.y) / static_cast<std::float16_t>(info.mode.wh.x), 1.0f16),
 		.buffer_address = frame->box_text.uniform_buffer_address
 	};
 	vkCmdPushConstants(frame->cmd, commons->getProcessorStageData<GPGPU_ProcessorStageResources_RenderUI_TextBox>()->render_pipeline.layout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push_constant_data), &push_constant_data);

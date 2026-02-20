@@ -269,9 +269,9 @@ void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_W
 			},
 			.mipLevels = 1,
 			.arrayLayers = 1,
-			.samples = VK_SAMPLE_COUNT_8_BIT,
+			.samples = VK_SAMPLE_COUNT_4_BIT,
 			.tiling = VK_IMAGE_TILING_OPTIMAL,
-			.usage = VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+			.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
 			.queueFamilyIndexCount = 0,
 			.pQueueFamilyIndices = nullptr,
@@ -280,12 +280,13 @@ void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_W
 
 		vkCreateImage(commons.dvc, &image_create_info, nullptr, &frame.images.msaa.image);
 		image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+		image_create_info.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 		vkCreateImage(commons.dvc, &image_create_info, nullptr, &frame.images.resolve.image);
 
 		ui_frames.push_back(&frame.images.msaa.image);
 		ui_frames.push_back(&frame.images.resolve.image);
 	}
-	wnd_ext->allocations.ui.resizable_memory_blocks = this->primary_dvc->allocate(ui_frames, {}, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	wnd_ext->allocations.ui.resizable_memory_blocks = this->primary_dvc->allocate(ui_frames, {}, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT);
 
 	for (auto i = 0; i < wnd_ext->frames.ui->frames.size(); i++)
 	{

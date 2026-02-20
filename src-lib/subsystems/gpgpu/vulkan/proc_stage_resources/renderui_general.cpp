@@ -13,13 +13,13 @@ ClassImpl::GPGPU_ProcessorStageResources_RenderUI_General(const GPGPU_Device_Vul
 			.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 			.flags = 0,
 			.format = VK_FORMAT_R8G8B8A8_UNORM,
-			.samples = VK_SAMPLE_COUNT_8_BIT,
-			.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-			.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+			.samples = VK_SAMPLE_COUNT_4_BIT,
+			.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+			.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 			.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 			.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
 			.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-			.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
+			.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 		},
 		VkAttachmentDescription2
 		{
