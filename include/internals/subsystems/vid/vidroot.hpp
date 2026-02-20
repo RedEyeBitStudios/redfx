@@ -74,13 +74,8 @@ namespace nxcraft::intern::subsystems
 			VidWndInfo& retrieve(std::string_view wnd_name);
 			nxcraft::err::ErrorHolder append(std::string_view wnd_name, VidWndInfo info);
 			KeysSet retrieveAllRegistered();
-			template<typename T>
-			void appendUI(std::string_view wnd_name, T* ui_ptr) requires (std::is_base_of_v<UI, T>)
-			{
-				auto wnd = &this->retrieve(wnd_name);
-				UI* ptr = static_cast<UI*>(ui_ptr);
-				wnd->ui_ext->registered[std::move(ptr->page_name)].reset(ptr);
-			}
+			
+			void appendUI(std::string_view wnd_name, UI* ui_ptr);
 		};
 	private:
 		std::vector<VidMode> fullscreen_modes;

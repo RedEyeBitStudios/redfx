@@ -2,7 +2,8 @@
 #include <internals/subsystems/gpgpu/vulkan/window_extension.hpp>
 #include <subsystems.hpp>
 #include <internals/subsystems/gpgpu/vulkan/functions.hpp>
-#include "../proc_stage_resources/stage_ui_colorbox.hpp"
+#include "../proc_stage_resources/renderui_colorbox.hpp"
+#include "../proc_stage_resources/renderui_textbox.hpp"
 
 using ClassImpl = nxcraft::intern::subsystems::GPGPU_RootVulkan;
 
@@ -27,12 +28,13 @@ void ClassImpl::clearWindowExtension(GPGPU_WindowExtension* ext)
 
 	for (auto& f : wnd_ext->frames.ui->frames)
 	{
-		vkDestroyImageView(primary_commons.dvc, f.color_framebuffer_view, nullptr);
-		vkDestroyImage(primary_commons.dvc, f.color_framebuffer, nullptr);
-		vkDestroyImageView(primary_commons.dvc, f.depth_buffer_view, nullptr);
-		vkDestroyImage(primary_commons.dvc, f.depth_buffer, nullptr);
+		vkDestroyImageView(primary_commons.dvc, f.images.resolve.view, nullptr);
+		vkDestroyImageView(primary_commons.dvc, f.images.msaa.view, nullptr);
+		vkDestroyImage(primary_commons.dvc, f.images.resolve.image, nullptr);
+		vkDestroyImage(primary_commons.dvc, f.images.msaa.image, nullptr);
 		vkDestroyFence(primary_commons.dvc, f.cmd_fence, nullptr);
-		vkDestroyBuffer(primary_commons.dvc, f.uniform_buffer, nullptr);
+		vkDestroyBuffer(primary_commons.dvc, f.box_color.uniform_buffer, nullptr);
+		vkDestroyBuffer(primary_commons.dvc, f.box_text.uniform_buffer, nullptr);
 		vkDestroyFramebuffer(primary_commons.dvc, f.framebuffer, nullptr);
 	}
 
@@ -119,20 +121,24 @@ void ClassImpl::makeWindowExtension(GPGPU_WindowExtension* ext)
 			.pQueueFamilyIndices = nullptr
 		};
 
-		vkCreateBuffer(commons.dvc, &buf_info, nullptr, &f.uniform_buffer);
-		buffers.push_back(&f.uniform_buffer);
+		vkCreateBuffer(commons.dvc, &buf_info, nullptr, &f.box_color.uniform_buffer);
+		vkCreateBuffer(commons.dvc, &buf_info, nullptr, &f.box_text.uniform_buffer);
+		buffers.push_back(&f.box_color.uniform_buffer);
+		buffers.push_back(&f.box_text.uniform_buffer);
 	}
 
 	wnd_ext->allocations.ui.constant_memory_blocks.uniform_buffer_device = this->primary_dvc->allocate_bda(buffers, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	for (auto& f : wnd_ext->frames.ui->frames)
 	{
-		const VkBufferDeviceAddressInfoKHR addr_info
+		VkBufferDeviceAddressInfoKHR addr_info
 		{
 			.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
-			.buffer = f.uniform_buffer
+			.buffer = f.box_color.uniform_buffer
 		};
-		f.uniform_buffer_address = nxcraft::intern::vk::vkGetBufferDeviceAddressKHR(commons.dvc, &addr_info);
+		f.box_color.uniform_buffer_address = nxcraft::intern::vk::vkGetBufferDeviceAddressKHR(commons.dvc, &addr_info);
+		addr_info.buffer = f.box_text.uniform_buffer;
+		f.box_text.uniform_buffer_address = nxcraft::intern::vk::vkGetBufferDeviceAddressKHR(commons.dvc, &addr_info);
 	}
 }
 void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_WindowExtension_Vulkan* wnd_ext)
@@ -153,8 +159,10 @@ void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_W
 		vkDestroySwapchainKHR(commons.dvc, wnd_ext->swp, nullptr);
 		for(auto& frame : wnd_ext->frames.ui->frames)
 		{
-			vkDestroyImageView(commons.dvc, frame.color_framebuffer_view, nullptr);
-			vkDestroyImage(commons.dvc, frame.color_framebuffer, nullptr);
+			vkDestroyImageView(commons.dvc, frame.images.resolve.view, nullptr);
+			vkDestroyImageView(commons.dvc, frame.images.msaa.view, nullptr);
+			vkDestroyImage(commons.dvc, frame.images.resolve.image, nullptr);
+			vkDestroyImage(commons.dvc, frame.images.msaa.image, nullptr);
 			vkDestroyFence(commons.dvc, frame.cmd_fence, nullptr);
 			vkDestroyFramebuffer(commons.dvc, frame.framebuffer, nullptr);
 		}
@@ -244,7 +252,6 @@ void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_W
 
 	std::vector<VkImage*> ui_frames;
 	constexpr const VkFormat ui_frame_format = VK_FORMAT_R8G8B8A8_UNORM;
-	constexpr const VkFormat ui_depth_frame_format = VK_FORMAT_D16_UNORM;
 	for (auto& frame : wnd_ext->frames.ui->frames)
 	{
 		VkImageCreateInfo image_create_info
@@ -262,7 +269,7 @@ void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_W
 			},
 			.mipLevels = 1,
 			.arrayLayers = 1,
-			.samples = VK_SAMPLE_COUNT_1_BIT,
+			.samples = VK_SAMPLE_COUNT_8_BIT,
 			.tiling = VK_IMAGE_TILING_OPTIMAL,
 			.usage = VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
 			.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
@@ -271,14 +278,12 @@ void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_W
 			.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED
 		};
 
-		vkCreateImage(commons.dvc, &image_create_info, nullptr, &frame.color_framebuffer);
-		ui_frames.push_back(&frame.color_framebuffer);
+		vkCreateImage(commons.dvc, &image_create_info, nullptr, &frame.images.msaa.image);
+		image_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+		vkCreateImage(commons.dvc, &image_create_info, nullptr, &frame.images.resolve.image);
 
-		image_create_info.format = ui_depth_frame_format;
-		image_create_info.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
-
-		vkCreateImage(commons.dvc, &image_create_info, nullptr, &frame.depth_buffer);
-		ui_frames.push_back(&frame.depth_buffer);
+		ui_frames.push_back(&frame.images.msaa.image);
+		ui_frames.push_back(&frame.images.resolve.image);
 	}
 	wnd_ext->allocations.ui.resizable_memory_blocks = this->primary_dvc->allocate(ui_frames, {}, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -289,7 +294,7 @@ void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_W
 			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.image = wnd_ext->frames.ui->frames[i].color_framebuffer,
+			.image = wnd_ext->frames.ui->frames[i].images.msaa.image,
 			.viewType = VkImageViewType::VK_IMAGE_VIEW_TYPE_2D,
 			.format = ui_frame_format,
 			.components
@@ -308,17 +313,15 @@ void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_W
 				.layerCount = 1
 			}
 		};
-		vkCreateImageView(commons.dvc, &image_view_info, nullptr, &wnd_ext->frames.ui->frames[i].color_framebuffer_view);
+		vkCreateImageView(commons.dvc, &image_view_info, nullptr, &wnd_ext->frames.ui->frames[i].images.msaa.view);
 
-		image_view_info.format = ui_depth_frame_format;
-		image_view_info.image = wnd_ext->frames.ui->frames[i].depth_buffer;
-		image_view_info.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-		vkCreateImageView(commons.dvc, &image_view_info, nullptr, &wnd_ext->frames.ui->frames[i].depth_buffer_view);
+		image_view_info.image = wnd_ext->frames.ui->frames[i].images.resolve.image;
+		vkCreateImageView(commons.dvc, &image_view_info, nullptr, &wnd_ext->frames.ui->frames[i].images.resolve.view);
 
 		const std::vector<VkImageView> attachment_views
 		{
-			wnd_ext->frames.ui->frames[i].depth_buffer_view,
-			wnd_ext->frames.ui->frames[i].color_framebuffer_view
+			wnd_ext->frames.ui->frames[i].images.msaa.view,
+			wnd_ext->frames.ui->frames[i].images.resolve.view,
 		};
 
 		const VkFramebufferCreateInfo framebuffer_info
@@ -326,7 +329,7 @@ void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_W
 			.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
 			.pNext = nullptr,
 			.flags = 0,
-			.renderPass = this->primary_dvc->getProcessorStageData<GPGPU_ProcessorStageResources_UI_ColorBox>()->render_pipeline.pass,
+			.renderPass = this->primary_dvc->getProcessorStageData<GPGPU_ProcessorStageResources_RenderUI_General>()->renderpass,
 			.attachmentCount = static_cast<uint32_t>(attachment_views.size()),
 			.pAttachments = attachment_views.data(),
 			.width = info.mode.wh.x,

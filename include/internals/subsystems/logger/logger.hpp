@@ -12,7 +12,7 @@ namespace nxcraft::intern::subsystems
 	{
 	private:
 		std::string file_name;
-		std::unordered_map<const void*, std::string_view> headers;
+		std::unordered_map<const void*, std::string> headers;
 		std::chrono::system_clock::time_point startup_timepoint;
 	public:
 		class Message

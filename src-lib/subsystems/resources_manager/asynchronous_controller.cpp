@@ -41,6 +41,7 @@ void ClassImpl::transfer(AsyncTransferUnit& transfer_unit)
 				);
 			}
 			transfer_unit.status = AsyncTransferUnitStatus::IDLE;
+			transfer_unit.data.clear();
 		}
 	}
 	transfer_unit.status = AsyncTransferUnitStatus::INACTIVE;
@@ -49,16 +50,21 @@ void ClassImpl::transfer(AsyncTransferUnit& transfer_unit)
 
 void ClassImpl::submitQueue()
 {
-	NXC_LOG_HELPER("Submit asynchronous queue called.");
+	if (this->queue.empty()) return;
+	NXC_LOG_HELPER("Submitting asynchronous transfer...");
 	
 	// Prepare workload.
 	std::vector<std::vector<ResourceCache*>> workload;
-	uint64_t io_thread_size_summary = 0;	
+	uint64_t io_thread_size_summary = 0;
 	std::vector<ResourceCache*> unit_work;
 
 	for (auto& entry : this->queue)
 	{
 		auto& resource_entry = this->resources[entry];
+		if (resource_entry.data != nullptr)
+		{
+			continue;
+		}
 		const auto file_size = resource_entry.manifest_ptr->general.file_size;
 
 		io_thread_size_summary += file_size;
@@ -83,7 +89,7 @@ void ClassImpl::submitQueue()
 				free_units.insert(t.get());
 			}
 		}
-		std::this_thread::sleep_for(std::chrono::milliseconds(20));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 
 	// Dispatch.
@@ -109,7 +115,7 @@ void ClassImpl::waitForTransfers()
 		{
 			while (t_unit->status != AsyncTransferUnitStatus::IDLE)
 			{
-				std::this_thread::sleep_for(std::chrono::milliseconds(20));
+				std::this_thread::sleep_for(std::chrono::milliseconds(5));
 			}
 		}
 	}

@@ -1,5 +1,7 @@
 #include <internals/subsystems/gpgpu/vulkan/devices.hpp>
 #include <format>
+#include <subsystems.hpp>
+#include <type_traits>
 
 using ClassImpl = nxcraft::intern::subsystems::GPGPU_Device_Vulkan;
 
@@ -59,6 +61,8 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 		return queues;
 	}();
 
+	std::optional<uint32_t> additional_transfer_queue_family_index = std::nullopt;
+
 	for (auto& queue : queues)
 	{
 		const uint32_t index = &queue - queues.data();
@@ -68,8 +72,7 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 		}
 		else if (queue.queueFlags & VK_QUEUE_TRANSFER_BIT)
 		{
-			this->transfer_queues.queue_family_index.emplace(index);
-			this->transfer_queues.queues.resize(queue.queueCount);
+			additional_transfer_queue_family_index.emplace(index);
 		}
 	}
 
@@ -88,8 +91,8 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 		}
 	};
 
-	const std::vector<float> transfer_priorities(this->transfer_queues.queues.size(), 0.5f);
-	if (this->transfer_queues.queue_family_index.has_value())
+	const std::vector<float> transfer_priorities(1, 0.3f);
+	if (additional_transfer_queue_family_index.has_value())
 	{
 		queue_infos.push_back
 		(
@@ -98,15 +101,11 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 				.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
 				.pNext = nullptr,
 				.flags = 0,
-				.queueFamilyIndex = this->transfer_queues.queue_family_index.value(),
+				.queueFamilyIndex = additional_transfer_queue_family_index.value(),
 				.queueCount = static_cast<uint32_t>(transfer_priorities.size()),
 				.pQueuePriorities = transfer_priorities.data()
 			}
 		);
-	}
-	else
-	{
-		this->transfer_queues.queue_family_index.emplace(this->main_queue.queue_family_index);
 	}
 
 	VkPhysicalDeviceSeparateDepthStencilLayoutsFeaturesKHR separate_depth_stencil_features
@@ -131,6 +130,7 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 	const VkPhysicalDeviceFeatures core_features
 	{
 		.tessellationShader = true,
+		.sampleRateShading = true,
 		.fillModeNonSolid = true,
 		.samplerAnisotropy = true,
 		.shaderInt16 = true,
@@ -167,45 +167,39 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 	else
 	{
 		vkGetDeviceQueue(this->dvc, this->main_queue.queue_family_index, 0, &this->main_queue.handle);
-		
-		for (auto& q : this->transfer_queues.queues)
+
+		auto& additional_queue = this->transfer.queue;
+		if (additional_transfer_queue_family_index.has_value())
 		{
-			const uint32_t id = &q - this->transfer_queues.queues.data();
-			vkGetDeviceQueue(this->dvc, this->transfer_queues.queue_family_index.value(), id, &q.queue);
-
-			const VkCommandPoolCreateInfo cmd_allocation_info
-			{
-				.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-				.queueFamilyIndex = this->transfer_queues.queue_family_index.value()
-			};
-
-			vkCreateCommandPool(this->dvc, &cmd_allocation_info, nullptr, &q.cmd_allocation);
-
-			const VkCommandBufferAllocateInfo cmd_info
-			{
-				.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-				.pNext = nullptr,
-				.commandPool = q.cmd_allocation,
-				.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-				.commandBufferCount = 1
-			};
-
-			vkAllocateCommandBuffers(this->dvc, &cmd_info, &q.cmd);
-
-			const VkFenceCreateInfo fence_info
-			{
-				.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-				.pNext = nullptr,
-				.flags = VK_FENCE_CREATE_SIGNALED_BIT
-			};
-
-			vkCreateFence(this->dvc, &fence_info, nullptr, &q.fence);
+			additional_queue.family_index = additional_transfer_queue_family_index.value();
+			vkGetDeviceQueue(this->dvc, additional_queue.family_index, 0, &additional_queue.handle);
+		}
+		else
+		{
+			additional_queue.family_index = this->main_queue.queue_family_index;
+			additional_queue.handle = this->main_queue.handle;
 		}
 
 		this->constructMemManager();
 		this->createProcessor();
+
+		nxcraft::Subsystems::getSubsystem_Logger().registerHeader(&this->transfer, "SubsystemGPGPU::ResourceManager");
+
+		const VkCommandPoolCreateInfo cmd_allocation_info
+		{
+			.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+			.pNext = nullptr,
+			.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT | VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+			.queueFamilyIndex = additional_queue.family_index
+		};
+		vkCreateCommandPool(this->dvc, &cmd_allocation_info, nullptr, &this->transfer.cmd_allocation);
+
+		this->transfer.transfer_units.resize(2);
+
+		for (auto& unit : this->transfer.transfer_units)
+		{
+			unit = std::move(std::make_unique<AsyncUploadUnit>(*this));
+		}
 	}
 }
 ClassImpl::~GPGPU_Device_Vulkan()
@@ -219,9 +213,72 @@ ClassImpl::~GPGPU_Device_Vulkan()
 }
 void ClassImpl::destroyTransferQueues()
 {
-	for (auto& q : this->transfer_queues.queues)
+	for (auto& asset : this->memory_manager_data.assets_gpu)
 	{
-		vkDestroyFence(this->dvc, q.fence, nullptr);
-		vkDestroyCommandPool(this->dvc, q.cmd_allocation, nullptr);
+		std::visit
+		(
+			[this](auto& asset)
+			{
+				using T = std::decay_t<decltype(asset)>;
+
+				if constexpr (std::is_same_v<T, ClassImpl::ResourceClasses::Resource_RedFX_Font>)
+				{
+					for (auto& data : std::views::values(asset.characters_data))
+					{
+						vkDestroyBuffer(this->dvc, data.v_buffer, nullptr);
+					}
+				}
+				else
+				{
+					static_assert(false, "Branch unimplemented.");
+				}
+			},
+			asset.second
+		);
 	}
+	this->transfer.transfer_units.clear();
+	vkDestroyCommandPool(this->dvc, this->transfer.cmd_allocation, nullptr);
+}
+
+ClassImpl::AsyncUploadUnit::AsyncUploadUnit(GPGPU_Device_Vulkan& dvc)
+{
+	this->dvc = &dvc;
+
+	const VkCommandBufferAllocateInfo cmd_info
+	{
+		.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+		.pNext = nullptr,
+		.commandPool = dvc.transfer.cmd_allocation,
+		.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+		.commandBufferCount = 1
+	};
+	vkAllocateCommandBuffers(dvc.dvc, &cmd_info, &this->cmd);
+
+	const VkFenceCreateInfo fence_info
+	{
+		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = VK_FENCE_CREATE_SIGNALED_BIT
+	};
+	vkCreateFence(dvc.dvc, &fence_info, nullptr, &this->fence);
+
+	const VkBufferCreateInfo buffer_info
+	{
+		.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.size = 512 * 1024 * 1024,
+		.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+		.queueFamilyIndexCount = 0,
+		.pQueueFamilyIndices = nullptr
+	};
+	vkCreateBuffer(dvc.dvc, &buffer_info, nullptr, &this->staging_buffer);
+
+	this->buffer_mem = dvc.allocate({}, {&this->staging_buffer}, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+}
+ClassImpl::AsyncUploadUnit::~AsyncUploadUnit()
+{
+	vkDestroyBuffer(this->dvc->dvc, this->staging_buffer, nullptr);
+	vkDestroyFence(this->dvc->dvc, this->fence, nullptr);
 }

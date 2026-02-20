@@ -2,6 +2,7 @@
 #include "processor_stage_resources.hpp"
 #include "window_extension.hpp"
 #include <internals/subsystems/gpgpu/vulkan/devices.hpp>
+#include <any>
 
 namespace nxcraft::intern::subsystems
 {	
@@ -10,6 +11,6 @@ namespace nxcraft::intern::subsystems
 	public:
 		GPGPU_ProcessorStage_Vulkan() = default;
 		virtual ~GPGPU_ProcessorStage_Vulkan() = default;
-		virtual void process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_ProcessorStageResources_Vulkan* resources, GPGPU_Device_Vulkan* commons) = 0;
+		virtual void process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_Device_Vulkan* commons, std::any any_data) = 0;
 	};
 }

@@ -4,6 +4,7 @@
 #include <print>
 #include <cassert>
 #include <fstream>
+#include <cassert>
 
 #define COLOR_CODE_DEFAULT			"\033[0m"
 #define COLOR_CODE_HEADER			"\033[38;2;0;160;255m"
@@ -19,10 +20,14 @@ extern bool critical_error_occured;
 ClassImpl::Message(const void* const address, std::string_view msg_content, Flags flags)
 {
 	auto logger = &nxcraft::Subsystems::getSubsystem_Logger();
+
+	assert(logger->headers.contains(address) && "Unregistered header.");
 	
 	const auto msg_header = logger->headers[address];
 	const auto runtime_duration = std::chrono::system_clock::now() - logger->startup_timepoint;
 	const auto formatted_duration = std::chrono::hh_mm_ss(runtime_duration);
+
+	assert(msg_header.length() > 0 && "Invalid name.");
 
 	const auto timepoint_msg = std::format
 	(

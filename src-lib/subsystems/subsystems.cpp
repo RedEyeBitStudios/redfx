@@ -82,4 +82,5 @@ ClassImpl::ResourcesManagerRoot& ClassImpl::getSubsystem_ResourcesManager()
 void ClassImpl::main()
 {
 	nxcraft::intern::ProcessorUI::process();
+	getSubsystem_ResourcesManager().submitQueue();
 }

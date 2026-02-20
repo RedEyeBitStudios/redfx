@@ -49,6 +49,7 @@ set(SRC_LIB_GPGPU
     "src-lib/subsystems/gpgpu/vulkan/dvc/dctor.cpp"
     "src-lib/subsystems/gpgpu/vulkan/dvc/dvc_info.cpp"
     "src-lib/subsystems/gpgpu/vulkan/dvc/dvc_processor_stage_resources.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/dvc/transfer_handling.cpp"
     "src-lib/subsystems/gpgpu/vulkan/mem_manager/allocation.cpp"
     "src-lib/subsystems/gpgpu/vulkan/mem_manager/dctor.cpp"
     "src-lib/subsystems/gpgpu/vulkan/mem_manager/deallocation.cpp"
@@ -57,8 +58,12 @@ set(SRC_LIB_GPGPU
     "src-lib/subsystems/gpgpu/vulkan/root/handling/presentation.cpp"
     "src-lib/subsystems/gpgpu/vulkan/root/handling/update_ui.cpp"
     "src-lib/subsystems/gpgpu/vulkan/root/handling/proc_stage.cpp"
-    "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/stage_ui_colorbox.cpp"
-    "src-lib/subsystems/gpgpu/vulkan/processor_stages/render_ui_colorbox.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/processor_stages/renderui_cull_elements.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/processor_stages/render_ui.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_colorbox.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_textbox.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_general.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_cull_elements.cpp"
 )
 set(SRC_LIB_VID
     "src-lib/err/vid/window_append.cpp"
@@ -98,6 +103,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     "vulkan"
     "freetype"
     "tinyxml2"
+    "ttf2mesh"
 )
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     NXC_APP_NAME="./${PROJECT_NAME}"
@@ -116,6 +122,8 @@ endif()
 set(VULKAN_SHADER_SOURCES 
     "ui_colorbox.vert"
     "ui_colorbox.frag"
+    "ui_textbox.vert"
+    "ui_textbox.frag"
 )
 
 message(STATUS "Compiling Vulkan shaders")
@@ -128,3 +136,5 @@ endforeach()
 
 #add_subdirectory(${CMAKE_SOURCE_DIR}/src-tools)
 # clear && cmake -B build -G "Ninja Multi-Config" -DCMAKE_SYSTEM_PROCESSOR=x86_64 && ninja -C build -f build-Debug.ninja && ninja -C build -f build-Release.ninja
+
+# ttf2mesh git https://github.com/fetisov/ttf2mesh.git

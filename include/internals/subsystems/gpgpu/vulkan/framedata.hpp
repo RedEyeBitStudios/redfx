@@ -53,18 +53,33 @@ namespace nxcraft::intern::subsystems
 
 	class GPGPU_FrameData_Vulkan_UI : public GPGPU_FrameData_Vulkan
 	{
-	public:
-		VkImage color_framebuffer = VK_NULL_HANDLE;
-		VkImageView color_framebuffer_view = VK_NULL_HANDLE;
+	public:		
+		struct
+		{
+			struct
+			{
+				VkImage image = VK_NULL_HANDLE;
+				VkImageView view = VK_NULL_HANDLE;
+			} resolve;
+			struct
+			{
+				VkImage image = VK_NULL_HANDLE;
+				VkImageView view = VK_NULL_HANDLE;
+			} msaa;
+		} images;
 
-		VkImage depth_buffer = VK_NULL_HANDLE;
-		VkImageView depth_buffer_view = VK_NULL_HANDLE;
+		struct
+		{
+			VkBuffer uniform_buffer = VK_NULL_HANDLE;
+			VkDeviceAddress uniform_buffer_address;
+		} box_color;
+		struct
+		{
+			VkBuffer uniform_buffer = VK_NULL_HANDLE;
+			VkDeviceAddress uniform_buffer_address;
+		} box_text;
 
-		VkBuffer color_box_uniform_buffer = VK_NULL_HANDLE;
 		VkFence cmd_fence = VK_NULL_HANDLE;
-		VkBuffer uniform_buffer = VK_NULL_HANDLE;
-		VkDeviceAddress uniform_buffer_address;
-
 		VkFramebuffer framebuffer;
 
 		nexora_utils::math::ui16vec2 update_bound_lo;

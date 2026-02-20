@@ -5,6 +5,7 @@
 #include <regex>
 #include <cassert>
 #include <mutex>
+#include <algorithm>
 
 using ClassImpl = nxcraft::intern::subsystems::ResourcesManagerRoot;
 
@@ -102,14 +103,7 @@ void ClassImpl::searchForManifests()
 				};
 
 				std::string format;
-				if (!general_header->FirstChildElement("format"))
-				{
-					if (std::filesystem::path(manifest.general.path).extension() == std::string_view(".ttf"))
-					{
-						format = "FONT_TTF";
-					}
-				}
-				else
+				if (auto fmt = general_header->FirstChildElement("format"); fmt != nullptr)
 				{
 					format = general_header->FirstChildElement("format")->GetText();
 				}
@@ -117,7 +111,7 @@ void ClassImpl::searchForManifests()
 				// Determine what kind of manifest extension is.
 				std::unordered_map<std::string_view, AssetType> type_pairs
 				{
-					{ "FONT_TTF", AssetType::FONT_TTF },
+					{ "REDFX_FONT", AssetType::REDFX_FONT },
 					{ "REDFX_UI", AssetType::REDFX_UI }
 				};
 
@@ -125,7 +119,7 @@ void ClassImpl::searchForManifests()
 				{
 					const AssetType type = type_pairs[format];
 
-					if (type == AssetType::FONT_TTF)
+					if (type == AssetType::REDFX_FONT)
 					{
 						manifest.extension = ResourceManifest::Extensions::Extension_Font
 						{
@@ -221,8 +215,10 @@ bool ClassImpl::validateManifest(const ResourceManifest& m)
 }
 void ClassImpl::preCacheAssets()
 {
-	NXC_LOG_HELPER("Precaching started...");
-	for (auto& manifest : this->manifests[AssetType::FONT_TTF])
+	NXC_LOG_HELPER("Prepare resource table...");
+	constexpr const char* fmt = "Setup completed: '{}'.";
+
+	for (auto& manifest : this->manifests[AssetType::REDFX_FONT])
 	{
 		const auto& ext = std::get<ResourceManifest::Extensions::Extension_Font>(manifest.extension);
 		this->resources[ext.name] = ResourceCache
@@ -230,7 +226,7 @@ void ClassImpl::preCacheAssets()
 			.manifest_ptr = &manifest,
 			.data = nullptr
 		};
-		NXC_LOG_HELPER(std::format("Precached '{}'.", ext.name));
+		NXC_LOG_HELPER(std::format(fmt, ext.name));
 	}
 	for (auto& manifest : this->manifests[AssetType::REDFX_UI])
 	{
@@ -240,7 +236,7 @@ void ClassImpl::preCacheAssets()
 			.manifest_ptr = &manifest,
 			.data = nullptr
 		};
-		NXC_LOG_HELPER(std::format("Precached '{}'", name));
+		NXC_LOG_HELPER(std::format(fmt, name));
 	}
 }
 void ClassImpl::refresh()
@@ -251,8 +247,26 @@ void ClassImpl::refresh()
 }
 void ClassImpl::appendAsynchronousQueue(std::string_view name)
 {
-	NXC_LOG_HELPER(std::format("Asset '{}' appended into queue.", name));
-	this->queue.push_back(name.data());
+	if 
+	(
+		this->resources.contains(name.data()) && 
+		this->resources[name.data()].data == nullptr && 
+		[this, &name]() -> bool
+		{
+			for (auto& unit : this->transfer_controller.transfer_units)
+			{
+				if (std::ranges::contains(unit->data, &this->resources[name.data()]))
+				{
+					return false;
+				}
+			}
+			return true;
+		}()
+	)
+	{
+		NXC_LOG_HELPER(std::format("Asset '{}' appended into queue.", name));
+		this->queue.push_back(name.data());
+	}
 }
 bool ClassImpl::checkAssetIsLoaded(std::string_view name)
 {

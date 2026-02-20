@@ -112,7 +112,7 @@ void ClassImpl::requestPresentation(VidRoot::VidWindows::VidWndInfo& info)
 			}
 		}
 	};
-	vkCmdBlitImage(curr_frame->cmd, ui_curr_frame->color_framebuffer, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, curr_frame->presentation_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_NEAREST);
+	vkCmdBlitImage(curr_frame->cmd, ui_curr_frame->images.resolve.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, curr_frame->presentation_buffer, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region, VK_FILTER_NEAREST);
 	swp_barrier.oldLayout = swp_barrier.newLayout;
 	swp_barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	vkCmdPipelineBarrier

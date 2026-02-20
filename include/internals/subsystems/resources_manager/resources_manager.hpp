@@ -20,10 +20,11 @@ namespace nxcraft::intern::subsystems
 	public:
 		enum class AssetType
 		{
-			FONT_TTF,
 			IMAGE_PNG,
 			IMAGE_KTX,
-			REDFX_UI
+			REDFX_UI,
+			REDFX_LANGUAGE_TRANSLATION,
+			REDFX_FONT
 		};
 
 		class ResourceData
@@ -40,10 +41,8 @@ namespace nxcraft::intern::subsystems
 		public:
 			struct CharacterData
 			{
-				nexora_utils::math::ui8vec2 size_px;
-				nexora_utils::math::i8vec2 bearing_px;
-				uint16_t offset_px;
-				std::vector<uint8_t> pixels;
+				std::vector<nexora_utils::math::f16vec2> vertices;
+				std::float16_t width;
 			};
 		private:
 			mutable std::unordered_map<uint32_t, CharacterData> characters;
@@ -51,8 +50,9 @@ namespace nxcraft::intern::subsystems
 		public:
 			ResourceData_Font(const ResourceManifest& manifest);
 			virtual ~ResourceData_Font() = default;
-			[[nodiscard]] const CharacterData* operator[](const uint32_t utf8_code) const;
+			[[nodiscard]] const CharacterData* operator[](const uint32_t utf32_code) const;
 			[[nodiscard]] std::string_view getFontName() const;
+			const std::unordered_map<uint32_t, CharacterData>& getCharacters() const;
 		};
 
 		class ResourceData_RedFXUI : public ResourceData
@@ -99,6 +99,7 @@ namespace nxcraft::intern::subsystems
 
 		struct ResourceCache
 		{
+			
 			ResourceManifest* manifest_ptr;
 			std::unique_ptr<ResourceData> data;
 		};

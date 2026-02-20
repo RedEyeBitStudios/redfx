@@ -1,8 +1,8 @@
-#include "stage_ui_colorbox.hpp"
+#include "renderui_colorbox.hpp"
 #include <format>
-#include <internals/subsystems/gpgpu/vulkan/functions.hpp>
 
-using ClassImpl = nxcraft::intern::subsystems::GPGPU_ProcessorStageResources_UI_ColorBox;
+
+using ClassImpl = nxcraft::intern::subsystems::GPGPU_ProcessorStageResources_RenderUI_ColorBox;
 
 namespace nxcraft::intern::subsystems
 {
@@ -68,100 +68,9 @@ namespace nxcraft::intern::subsystems
 		vkAllocateDescriptorSets(commons.dvc, &desc_set_info, &ptr->desc_set);
 		*/
 	}
-
-	static void prepareRenderPasses(ClassImpl* ptr, const GPGPU_Device_Vulkan::Commons& commons)
-	{
-		const std::vector<VkAttachmentDescription2> attachments_info
-		{
-			VkAttachmentDescription2
-			{
-				.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-				.flags = 0,
-				.format = VK_FORMAT_D16_UNORM,
-				.samples = VK_SAMPLE_COUNT_1_BIT,
-				.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-				.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-				.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-				.initialLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-				.finalLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL
-			},
-			VkAttachmentDescription2
-			{
-				.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
-				.flags = 0,
-				.format = VK_FORMAT_R8G8B8A8_UNORM,
-				.samples = VK_SAMPLE_COUNT_1_BIT,
-				.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-				.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-				.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-				.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-				.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-				.finalLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
-			}
-		};
-
-		const VkAttachmentReference2 depth_attachment_reference
-		{
-			.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-			.pNext = nullptr,
-			.attachment = 0,
-			.layout = attachments_info[0].initialLayout,
-			.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT
-		};
-
-		const std::vector<VkAttachmentReference2> output_attachment_references
-		{
-			VkAttachmentReference2
-			{
-				.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
-				.pNext = nullptr,
-				.attachment = 1,
-				.layout = attachments_info[1].initialLayout,
-				.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT
-			}
-		};
-
-		const std::vector<VkSubpassDescription2> subpasses_info
-		{
-			VkSubpassDescription2
-			{
-				.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
-				.pNext = nullptr,
-				.flags = 0,
-				.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-				.viewMask = 0,
-				.inputAttachmentCount = 0,
-				.pInputAttachments = nullptr,
-				.colorAttachmentCount = static_cast<uint32_t>(output_attachment_references.size()),
-				.pColorAttachments = output_attachment_references.data(),
-				.pResolveAttachments = nullptr,
-				.pDepthStencilAttachment = &depth_attachment_reference,
-				.preserveAttachmentCount = 0,
-				.pPreserveAttachments = nullptr
-			}
-		};
-
-		const VkRenderPassCreateInfo2 renderpass_info
-		{
-			.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2_KHR,
-			.pNext = nullptr,
-			.flags = 0,
-			.attachmentCount = static_cast<uint32_t>(attachments_info.size()),
-			.pAttachments = attachments_info.data(),
-			.subpassCount = static_cast<uint32_t>(subpasses_info.size()),
-			.pSubpasses = subpasses_info.data(),
-			.dependencyCount = 0,
-			.pDependencies = nullptr,
-			.correlatedViewMaskCount = 0,
-			.pCorrelatedViewMasks = nullptr
-		};
-
-		nxcraft::intern::vk::vkCreateRenderPass2KHR(commons.dvc, &renderpass_info, nullptr, &ptr->render_pipeline.pass);
-	}
 }
 
-ClassImpl::GPGPU_ProcessorStageResources_UI_ColorBox(const GPGPU_Device_Vulkan::Commons& commons)
+ClassImpl::GPGPU_ProcessorStageResources_RenderUI_ColorBox(const GPGPU_Device_Vulkan::Commons& commons, const GPGPU_ProcessorStageResources_RenderUI_General& renderui_generals)
 {
 	std::vector<VkShaderModule> shaders;
 	VkPushConstantRange range
@@ -204,7 +113,7 @@ ClassImpl::GPGPU_ProcessorStageResources_UI_ColorBox(const GPGPU_Device_Vulkan::
 		.pPushConstantRanges = &range
 	};
 	vkCreatePipelineLayout(commons.dvc, &pip_layout_info, nullptr, &this->render_pipeline.layout);
-	prepareRenderPasses(this, commons);
+	//prepareRenderPasses(this, commons);
 
 	const VkPipelineVertexInputStateCreateInfo vertex_input_info
 	{
@@ -223,13 +132,6 @@ ClassImpl::GPGPU_ProcessorStageResources_UI_ColorBox(const GPGPU_Device_Vulkan::
 		.flags = 0,
 		.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
 		.primitiveRestartEnable = false
-	};
-	const VkPipelineTessellationStateCreateInfo tessellation_info
-	{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = 0,
-		.patchControlPoints = 0
 	};
 	const VkPipelineViewportStateCreateInfo viewport_info
 	{
@@ -262,26 +164,12 @@ ClassImpl::GPGPU_ProcessorStageResources_UI_ColorBox(const GPGPU_Device_Vulkan::
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = 0,
-		.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+		.rasterizationSamples = VK_SAMPLE_COUNT_8_BIT,
 		.sampleShadingEnable = false,
 		.minSampleShading = 0,
 		.pSampleMask = nullptr,
 		.alphaToCoverageEnable = false,
 		.alphaToOneEnable = false
-	};
-	const VkPipelineDepthStencilStateCreateInfo depth_info
-	{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = 0,
-		.depthTestEnable = true,
-		.depthWriteEnable = true,
-		.depthCompareOp = VK_COMPARE_OP_GREATER,
-		.depthBoundsTestEnable = false,
-		.stencilTestEnable = false,
-		.front = VK_STENCIL_OP_KEEP,
-		.minDepthBounds = 0.0f,
-		.maxDepthBounds = 65536.0f
 	};
 	std::vector<VkPipelineColorBlendAttachmentState> attachments
 	{
@@ -338,11 +226,11 @@ ClassImpl::GPGPU_ProcessorStageResources_UI_ColorBox(const GPGPU_Device_Vulkan::
 		.pViewportState = &viewport_info,
 		.pRasterizationState = &rasterizer_info,
 		.pMultisampleState = &sampling_info,
-		.pDepthStencilState = &depth_info,
+		.pDepthStencilState = nullptr,
 		.pColorBlendState = &blend_info,
 		.pDynamicState = &dynamics_info,
 		.layout = this->render_pipeline.layout,
-		.renderPass = this->render_pipeline.pass,
+		.renderPass = renderui_generals.renderpass,
 		.subpass = 0,
 		.basePipelineHandle = VK_NULL_HANDLE,
 		.basePipelineIndex = 0
@@ -353,100 +241,9 @@ ClassImpl::GPGPU_ProcessorStageResources_UI_ColorBox(const GPGPU_Device_Vulkan::
 	{
 		vkDestroyShaderModule(commons.dvc, shader_module, nullptr);
 	}
-	/*
-	prepareDescriptors(this, commons);
-	
-
-	const VkPushConstantRange range
-	{
-		.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-		.offset = 0,
-		.size = 16
-	};
-
-	const VkPipelineLayoutCreateInfo pip_layout_info
-	{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = 0,
-		.setLayoutCount = 1,
-		.pSetLayouts = &this->desc_layout,
-		.pushConstantRangeCount = 1,
-		.pPushConstantRanges = &range
-	};
-	vkCreatePipelineLayout(commons.dvc, &pip_layout_info, nullptr, &this->pipeline_layout_comp);
-
-	const VkComputePipelineCreateInfo pip_info
-	{
-		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = 0,
-		.stage = 
-		{
-			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.stage = this->colorbox_shader.stage_flags,
-			.module = ui_comp_shader,
-			.pName = "main",
-			.pSpecializationInfo = nullptr
-		},
-		.layout = this->pipeline_layout_comp,
-		.basePipelineHandle = nullptr,
-		.basePipelineIndex = 0
-	};
-	vkCreateComputePipelines(commons.dvc, nullptr, 1, &pip_info, nullptr, &this->pipeline_comp);
-	
-
-	const std::vector<VkDescriptorUpdateTemplateEntry> desc_update_template_entries
-	{
-		VkDescriptorUpdateTemplateEntry
-		{
-			.dstBinding = 5,
-			.dstArrayElement = 0,
-			.descriptorCount = 1,
-			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-			.offset = 0,
-			.stride = 1
-		},
-		VkDescriptorUpdateTemplateEntry
-		{
-			.dstBinding = 6,
-			.dstArrayElement = 0,
-			.descriptorCount = 1,
-			.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-			.offset = sizeof(VkDescriptorImageInfo),
-			.stride = 1
-		}
-	};
-
-	const VkDescriptorUpdateTemplateCreateInfo desc_template_info
-	{
-		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = 0,
-		.descriptorUpdateEntryCount = static_cast<uint32_t>(desc_update_template_entries.size()),
-		.pDescriptorUpdateEntries = desc_update_template_entries.data(),
-		.templateType = VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET,
-		.descriptorSetLayout = this->desc_layout,
-		.pipelineBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE,
-		.pipelineLayout = this->pipeline_layout_comp,
-		.set = 0
-	};
-
-	vkCreateDescriptorUpdateTemplate(commons.dvc, &desc_template_info, nullptr, &this->desc_update_template);
-	*/
 }
 void ClassImpl::flush(const GPGPU_Device_Vulkan::Commons& commons)
 {
-	vkDestroyRenderPass(commons.dvc, this->render_pipeline.pass, nullptr);
 	vkDestroyPipelineLayout(commons.dvc, this->render_pipeline.layout, nullptr);
 	vkDestroyPipeline(commons.dvc, this->render_pipeline.handle, nullptr);
-	/*
-	vkDestroyDescriptorSetLayout(commons.dvc, this->desc_layout, nullptr);
-	vkDestroyPipelineLayout(commons.dvc, this->pipeline_layout_comp, nullptr);
-	vkDestroyPipeline(commons.dvc, this->pipeline_comp, nullptr);
-	vkDestroyDescriptorPool(commons.dvc, this->descs_pool, nullptr);
-	vkDestroyDescriptorUpdateTemplate(commons.dvc, this->desc_update_template, nullptr);
-	*/
 }

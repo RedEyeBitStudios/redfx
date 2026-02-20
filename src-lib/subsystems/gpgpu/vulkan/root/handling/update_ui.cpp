@@ -1,8 +1,12 @@
 #include <internals/subsystems/gpgpu/root_vulkan.hpp>
 #include <internals/subsystems/gpgpu/vulkan/window_extension.hpp>
 
-#include "../../processor_stages/render_ui_colorbox.hpp"
-#include "../../proc_stage_resources/stage_ui_colorbox.hpp"
+#include "../../processor_stages/renderui_cull_elements.hpp"
+#include "../../processor_stages/render_ui.hpp"
+
+#include "../../proc_stage_resources/renderui_cull_elements.hpp"
+//#include "../../processor_stages/render_ui_colorbox.hpp"
+//#include "../../proc_stage_resources/stage_ui_colorbox.hpp"
 
 using ClassImpl = nxcraft::intern::subsystems::GPGPU_RootVulkan;
 
@@ -12,6 +16,9 @@ void ClassImpl::updateUI(VidRoot::VidWindows::VidWndInfo& info)
 	const auto commons = this->primary_dvc->getCommons();
 	const auto queue = this->primary_dvc->getQueue();
 	auto next_frame = &wnd_ext->frames.ui->frames[wnd_ext->frames.ui->current_frame_id];
+
+	GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp resources_cull_elements;
+	GPGPU_ProcessorStage_RenderUI_CullElements().process(info, this->primary_dvc.get(), std::any(std::ref(resources_cull_elements)));
 
 	if (next_frame->state == GPGPU_FrameData_Vulkan::FrameState::FREE)
 	{
@@ -25,7 +32,7 @@ void ClassImpl::updateUI(VidRoot::VidWindows::VidWndInfo& info)
 		};
 		vkBeginCommandBuffer(next_frame->cmd, &cmd_info);
 
-		GPGPU_ProcessorStage_RenderUI_ColorBox().process(info, this->primary_dvc->getProcessorStageData<GPGPU_ProcessorStageResources_UI_ColorBox>(), this->primary_dvc.get());
+		GPGPU_ProcessorStage_RenderUI().process(info, this->primary_dvc.get(), std::any(std::ref(resources_cull_elements)));
 
 		vkEndCommandBuffer(next_frame->cmd);
 		next_frame->state = GPGPU_FrameData_Vulkan::FrameState::RECORDED;
@@ -73,7 +80,7 @@ void ClassImpl::updateUI(VidRoot::VidWindows::VidWndInfo& info)
 		};
 		vkBeginCommandBuffer(next_frame->cmd, &cmd_info);
 
-		GPGPU_ProcessorStage_RenderUI_ColorBox().process(info, this->primary_dvc->getProcessorStageData<GPGPU_ProcessorStageResources_UI_ColorBox>(), this->primary_dvc.get());
+		GPGPU_ProcessorStage_RenderUI_ColorBox().process(info, this->primary_dvc->getProcessorStageData<GPGPU_ProcessorStageResources_RenderUI_ColorBox>(), this->primary_dvc.get());
 
 		vkEndCommandBuffer(next_frame->cmd);
 

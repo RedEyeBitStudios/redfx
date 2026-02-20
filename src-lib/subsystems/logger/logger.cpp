@@ -27,6 +27,13 @@ void ClassImpl::registerHeader(const void* const address, std::string_view heade
 {
 	if (!this->headers.contains(address))
 	{
+		("Registered: %s\n", header_content.data());
 		this->headers[address] = header_content;
 	}
+	else
+	{
+		("%s\n", header_content.data());
+	}
+
+	("Local time: %s\n", this->headers[address].c_str());
 }

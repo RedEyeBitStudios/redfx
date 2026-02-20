@@ -129,8 +129,6 @@ ClassImpl::GPGPU_RootVulkan(nxcraft::err::ErrorHolder& err)
 	{
 		nxcraft::intern::vk::vkGetBufferDeviceAddressKHR = reinterpret_cast<PFN_vkGetBufferDeviceAddressKHR>(vkGetInstanceProcAddr(this->sys_con, "vkGetBufferDeviceAddressKHR"));
 		nxcraft::intern::vk::vkCreateRenderPass2KHR = reinterpret_cast<PFN_vkCreateRenderPass2KHR>(vkGetInstanceProcAddr(this->sys_con, "vkCreateRenderPass2KHR"));
-		nxcraft::intern::vk::vkCmdBeginRenderPass2KHR = reinterpret_cast<PFN_vkCmdBeginRenderPass2KHR>(vkGetInstanceProcAddr(this->sys_con, "vkCmdBeginRenderPass2KHR"));
-		nxcraft::intern::vk::vkCmdEndRenderPass2KHR = reinterpret_cast<PFN_vkCmdEndRenderPass2KHR>(vkGetInstanceProcAddr(this->sys_con, "vkCmdEndRenderPass2KHR"));
 
 		if (validation_enabled)
 		{
@@ -368,6 +366,7 @@ void ClassImpl::handleWindow(VidRoot::VidWindows::VidWndInfo& info)
 	{
 		this->requestPresentation(info);
 	}
+	this->primary_dvc->submitTransfer();
 }
 void ClassImpl::requestRecreation(VidRoot::VidWindows::VidWndInfo& info)
 {

@@ -68,3 +68,16 @@ ClassImpl::KeysSet ClassImpl::retrieveAllRegistered()
 {
 	return std::views::keys(this->wnd_pool);
 }
+
+void ClassImpl::appendUI(std::string_view wnd_name, UI* ui_ptr)
+{
+	auto wnd = &this->retrieve(wnd_name);
+	UI* ptr = static_cast<UI*>(ui_ptr);
+	wnd->ui_ext->registered[ptr->page_name].reset(ptr);
+
+	auto res_view = nxcraft::Subsystems::getSubsystem_ResourcesManager().retrieveResourceView(ui_ptr->page_name);
+	if (std::get<nxcraft::Subsystems::ResourcesManagerRoot::ResourceManifest::Extensions::Extension_RedFXUI>(res_view->manifest_ptr->extension).active_on_init)
+	{
+		wnd->ui_ext->active.insert(ptr);
+	}
+}

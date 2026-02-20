@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "../../../bases/gpgpu/root_base.hpp"
 #include <concepts>
+#include <thread>
 
 namespace nxcraft::intern::subsystems
 {
@@ -47,6 +48,27 @@ namespace nxcraft::intern::subsystems
 				std::vector<ResourceInfo> resources;
 			};
 		};
+
+		struct ResourceClasses
+		{
+			struct Resource_RedFX_Font
+			{
+				VkDeviceMemory mem_block;
+
+				struct CharacterData
+				{
+					uint32_t v_count;
+					VkBuffer v_buffer;
+				};
+
+				std::unordered_map<uint32_t, CharacterData> characters_data;
+			};
+		};
+
+		using GPGPU_Resource = std::variant
+		<
+			ResourceClasses::Resource_RedFX_Font
+		>;
 	protected:
 		DeviceInfo dvc_info;
 		DriverUUID driver_cache_uuid;
@@ -55,18 +77,27 @@ namespace nxcraft::intern::subsystems
 
 		std::unordered_map<std::string_view, std::unique_ptr<GPGPU_ProcessorStageResources>> processor_data;
 
-		template<typename T>
-		void makeProcessor() requires(std::is_base_of_v<GPGPU_ProcessorStageResources, T>)
+		template<typename T, typename... AdditionalArgs>
+		void makeProcessor(AdditionalArgs... args) requires(std::is_base_of_v<GPGPU_ProcessorStageResources, T>)
 		{
-			this->processor_data[typeid(T).name()] = std::move(std::make_unique<T>(this->getCommons()));
+			this->processor_data[typeid(T).name()] = std::move(std::make_unique<T>(this->getCommons(), args...));
 		}
 
-		struct AsyncTransferData
+		class AsyncUploadUnit
 		{
-			VkQueue queue;
-			VkCommandPool cmd_allocation = VK_NULL_HANDLE;
+		public:
+			VkDeviceMemory buffer_mem;
+			VkBuffer staging_buffer;
 			VkCommandBuffer cmd;
+			GPGPU_Device_Vulkan* dvc = nullptr;
 			VkFence fence;
+			
+			AsyncUploadUnit(GPGPU_Device_Vulkan& dvc);
+			virtual ~AsyncUploadUnit();
+		
+			std::vector<std::string_view> assets_to_transfer;
+
+			void controlUpload();
 		};
 
 		struct
@@ -77,13 +108,21 @@ namespace nxcraft::intern::subsystems
 
 		struct
 		{
-			std::optional<uint32_t> queue_family_index = std::nullopt;
-			std::vector<AsyncTransferData> queues;
-		} transfer_queues;
+			struct
+			{
+				uint32_t family_index = 0;
+				VkQueue handle;
+			} queue;
+			
+			VkCommandPool cmd_allocation = VK_NULL_HANDLE;
+			std::vector<std::unique_ptr<AsyncUploadUnit>> transfer_units;
+			std::vector<std::string_view> asset_queue;
+		} transfer;
 		
 		struct
 		{
 			std::unordered_map<VkDeviceMemory, MemManagerClasses::MemBlockInfo> allocated_blocks;
+			std::unordered_map<std::string, GPGPU_Resource> assets_gpu;
 		} memory_manager_data;
 
 		void constructMemManager();
@@ -93,6 +132,7 @@ namespace nxcraft::intern::subsystems
 		void destroyProcessor();
 
 		void destroyTransferQueues();
+		void waitForTransfer(AsyncUploadUnit* unit);
 	public:
 		
 		GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::ErrorHolder& err);
@@ -105,13 +145,15 @@ namespace nxcraft::intern::subsystems
 		const SurfaceCapabilities getSwapchainCapabilities(VkSurfaceKHR surf) const;
 		const Commons getCommons() const;
 
-		VkDeviceMemory allocate(const std::vector<VkImage*>& imgs, const std::vector<VkBuffer*>& bufs, VkMemoryPropertyFlags mem_flags);
-		VkDeviceMemory allocate_bda(const std::vector<VkBuffer*>& bufs, VkMemoryPropertyFlags mem_flags);
+		[[nodiscard]] VkDeviceMemory allocate(const std::vector<VkImage*>& imgs, const std::vector<VkBuffer*>& bufs, VkMemoryPropertyFlags mem_flags);
+		[[nodiscard]] VkDeviceMemory allocate_bda(const std::vector<VkBuffer*>& bufs, VkMemoryPropertyFlags mem_flags);
 		void requestDeallocation(const VkDeviceMemory m);
 		const MemManagerClasses::MemBlockInfo getMemBlockInfo(const VkDeviceMemory m);
 
-		void addTransferQueue(); // TODO: Add implementation of asynchronous transfer queue.
+		void addTransferQueue(std::string_view asset_name); // TODO: Add implementation of asynchronous transfer queue.
+		GPGPU_Resource* retrieveResource(std::string_view asset_name);
 		void submitTransfer();
+		
 
 		template<typename T>
 		T* getProcessorStageData()

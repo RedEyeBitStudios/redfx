@@ -44,15 +44,15 @@ namespace nxcraft
 			};
 			struct Resource
 			{
-				std::array<char, 30> resource;
+				std::string resource;
 			};
-			struct Multiplier
+			struct SizePixel
 			{
-				std::float16_t multiplier;
+				uint16_t size;
 			};
 			struct Text
 			{
-				std::array<char, 63> text;
+				std::string text;
 			};
 		};
 
@@ -60,7 +60,7 @@ namespace nxcraft
 		{
 			
 		};
-		struct TextBox : public BoxProperties::PositionPixel, BoxProperties::ColorRGBA, BoxProperties::LayersStack, BoxProperties::Mask, BoxProperties::Multiplier, BoxProperties::Text
+		struct TextBox : public BoxProperties::PositionPixel, BoxProperties::Text, BoxProperties::ColorRGBA, BoxProperties::LayersStack, BoxProperties::Mask, BoxProperties::SizePixel, BoxProperties::Resource
 		{
 
 		};
