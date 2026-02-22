@@ -40,12 +40,12 @@ ClassImpl::ResourcesManagerRoot()
 			{
 				using T = std::decay_t<decltype(ext)>;
 
-				if constexpr (std::is_same_v<T, ResourceManifest::Extensions::Extension_RedFXUI>)
+				if constexpr (std::is_same_v<T, ResourceManifestClasses::Manifest_RedFXUI>)
 				{
 					this->appendAsynchronousQueue(res.first);
 				}
 			},
-			res.second.manifest_ptr->extension
+			res.second.manifest_ptr->manifest
 		);
 	}
 
@@ -67,9 +67,86 @@ ClassImpl::~ResourcesManagerRoot()
 	}
 	NXC_LOG_HELPER(std::format("Transfer units exited: {}", this->transfer_controller.transfer_units.size()));
 }
+ClassImpl::ResourceManifest readManifestXML(const std::filesystem::path& path, const ClassImpl::AssetType type, ClassImpl::ResourceManifest&& manifest)
+{
+	tinyxml2::XMLDocument doc;
+	doc.LoadFile(path.c_str());
+
+	const auto root = doc.FirstChildElement();
+
+	ClassImpl::ResourceManifestClasses::ManifestHeader header
+	{
+		.fmt_version = static_cast<uint16_t>(root->FirstChildElement("fmt_v")->UnsignedText(0)),
+		.title = root->FirstChildElement("title")->GetText()
+	};
+
+	if (type == ClassImpl::AssetType::REDFX_FONT)
+	{
+		manifest.manifest = ClassImpl::ResourceManifestClasses::Manifest_RedFXFont
+		{
+			{ std::move(header) }
+		};
+		manifest.implicits.asset_path = path.relative_path().replace_extension(".bin");
+	}
+	else if (type == ClassImpl::AssetType::REDFX_UI)
+	{
+		ClassImpl::ResourceManifestClasses::Manifest_RedFXUI meta_cache
+		{
+			{ std::move(header) }
+		};
+		meta_cache.init = root->FirstChildElement("init")->BoolText();
+		manifest.implicits.asset_path = path.relative_path().replace_extension(".bin");
+		manifest.manifest = meta_cache;
+	}
+	else if (type == ClassImpl::AssetType::REDFX_LANG)
+	{
+		manifest.implicits.asset_path = path.relative_path();
+	}
+	else if (type == ClassImpl::AssetType::TEXTURE)
+	{
+		ClassImpl::ResourceManifestClasses::Manifest_Texture meta_cache
+		{
+			{ std::move(header) }
+		};
+		manifest.implicits.asset_path = path.relative_path().replace_extension(".tga");
+		//manifest.manifest = meta_cache;
+	}
+	else
+	{
+		assert(false && "Unimplemented branch.");
+	}
+
+	assert(std::filesystem::exists(manifest.implicits.asset_path) && "File must exist.");
+	manifest.implicits.file_size = std::filesystem::file_size(manifest.implicits.asset_path);
+	return manifest;
+}
 void ClassImpl::searchForManifests()
 {
 	NXC_LOG_HELPER("Scanning for manifests...");
+	std::unordered_map<std::filesystem::path, AssetType> directories
+	{
+		{ "assets/fonts", AssetType::REDFX_FONT },
+		{ "assets/langs", AssetType::REDFX_LANG },
+		{ "assets/textures", AssetType::TEXTURE },
+		{ "assets/ui", AssetType::REDFX_UI }
+	};
+
+	for (auto dir : directories)
+	{
+		const auto resource_type = dir.second;
+		for (const auto f : std::filesystem::directory_iterator(dir.first))
+		{
+			if (f.is_regular_file() && std::string_view(f.path().extension().generic_string()) == std::string_view(".xml"))
+			{
+				const auto relative_path = f.path().relative_path().generic_string();
+				NXC_LOG_HELPER(std::format("Found: {}", relative_path));
+
+				this->manifests[resource_type].push_back(readManifestXML(relative_path, resource_type, ClassImpl::ResourceManifest()));
+			}
+		}
+	}
+
+	/*
 
 	for (const auto& f : std::filesystem::directory_iterator("assets"))
 	{
@@ -82,14 +159,13 @@ void ClassImpl::searchForManifests()
 
 			if (std::regex_match(manifest_filename, m, r))
 			{
-				NXC_LOG_HELPER(std::format("Manifest: {}", manifest_filename));
+				
 				const std::string manifest_name = m[1].str();
 				
-				tinyxml2::XMLDocument doc;
-				doc.LoadFile(f.path().generic_string().c_str());
+				
 
 				const auto root = doc.FirstChildElement();
-				const auto general_header = root->FirstChildElement("general");
+				
 				const auto extension_header = root->FirstChildElement("extension");
 
 				// Firstly read general section.
@@ -98,7 +174,7 @@ void ClassImpl::searchForManifests()
 					.general
 					{
 						.path = general_header->FirstChildElement("path")->GetText(),
-						.file_size = general_header->FirstChildElement("size")->UnsignedText()
+						.file_size = std::filesystem::file_size(general_header->FirstChildElement("path")->GetText())
 					}
 				};
 
@@ -112,7 +188,8 @@ void ClassImpl::searchForManifests()
 				std::unordered_map<std::string_view, AssetType> type_pairs
 				{
 					{ "REDFX_FONT", AssetType::REDFX_FONT },
-					{ "REDFX_UI", AssetType::REDFX_UI }
+					{ "REDFX_UI", AssetType::REDFX_UI },
+					{ "IMAGE_TGA", AssetType::IMAGE_TGA }
 				};
 
 				if (type_pairs.contains(format))
@@ -156,88 +233,61 @@ void ClassImpl::searchForManifests()
 			}
 		}
 	}
-}
-bool ClassImpl::validateManifestSection(std::vector<uint64_t>&& parameters, const bool validation_result)
-{
-	for (auto& param : parameters)
-	{
-		if (param == 0)
-		{
-			return false;
-		}
-	}
-	return validation_result;
-}
-bool ClassImpl::validateManifest(const ResourceManifest& m)
-{
-	bool validation_result = true;
-
-	// Validate general section.
-	validation_result = this->validateManifestSection
-	(
-		std::vector<uint64_t>
-		{
-			m.general.file_size,
-			!m.general.path.empty()
-		},
-		validation_result
-	);
-
-	// Validate extension section.
-	std::visit
-	(
-		[&validation_result, this](auto&& extension)
-		{
-			using T = std::decay_t<decltype(extension)>;
-			using Ext = ResourceManifest::Extensions;
-			std::vector<uint64_t> validation_values{};
-
-			if constexpr (std::is_same_v<T, Ext::Extension_Font>)
-			{
-				validation_values = 
-				{
-					extension.name.length()
-				};
-			}
-			else if constexpr (std::is_same_v<T, Ext::Extension_RedFXUI>)
-			{}
-			else
-			{
-				static_assert(false, "Unimplemented branch.");
-			}
-
-			validation_result = this->validateManifestSection(std::move(validation_values), validation_result);
-		},
-		m.extension
-	);
-
-	return validation_result;
+		*/
 }
 void ClassImpl::preCacheAssets()
 {
 	NXC_LOG_HELPER("Prepare resource table...");
 	constexpr const char* fmt = "Setup completed: '{}'.";
 
+	for (auto& manifest_group : std::views::values(this->manifests))
+	{
+		for (auto& manifest : manifest_group)
+		{
+			std::visit
+			(
+				[this, &manifest, &fmt](auto&& metadata)
+				{
+					using T = std::decay_t<decltype(metadata)>;
+
+					if constexpr(std::is_base_of_v<ResourceManifestClasses::ManifestHeader, T>)
+					{
+						printf("METADATA: %s\n", metadata.title.c_str());
+						this->resources[metadata.title] = ResourceCache
+						{
+							.manifest_ptr = &manifest,
+							.data = nullptr
+						};
+						NXC_LOG_HELPER(std::format(fmt, metadata.title));
+					}
+				},
+				manifest.manifest
+			);
+		}
+	}
+
+	/*
 	for (auto& manifest : this->manifests[AssetType::REDFX_FONT])
 	{
-		const auto& ext = std::get<ResourceManifest::Extensions::Extension_Font>(manifest.extension);
-		this->resources[ext.name] = ResourceCache
+		const auto& meta = std::get<>(manifest.manifest);
+		this->resources[meta.title] = ResourceCache
 		{
 			.manifest_ptr = &manifest,
 			.data = nullptr
 		};
-		NXC_LOG_HELPER(std::format(fmt, ext.name));
+		NXC_LOG_HELPER(std::format(fmt, meta.title));
 	}
 	for (auto& manifest : this->manifests[AssetType::REDFX_UI])
 	{
-		const auto name = manifest.general.path.filename().replace_extension("").generic_string();
-		this->resources[name] = ResourceCache
+		const auto& meta = std::get<ResourceManifestClasses::Manifest_RedFXUI>(manifest.manifest);
+		this->resources[meta.title] = ResourceCache
 		{
 			.manifest_ptr = &manifest,
 			.data = nullptr
 		};
-		NXC_LOG_HELPER(std::format(fmt, name));
+		NXC_LOG_HELPER(std::format(fmt, meta.title));
 	}
+		*/
 }
 void ClassImpl::refresh()
 {

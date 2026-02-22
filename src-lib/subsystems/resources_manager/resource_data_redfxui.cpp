@@ -16,9 +16,8 @@ static T getBufData(char*& buf_ptr)
 
 ClassImpl::ResourceData_RedFXUI(const ResourceManifest& manifest)
 {
-	std::vector<char> tmp_buf(manifest.general.file_size, 0);
-
-	std::ifstream(manifest.general.path, std::ios::binary).read(tmp_buf.data(), std::span(tmp_buf).size_bytes());
+	std::vector<char> tmp_buf(manifest.implicits.file_size);
+	std::ifstream(manifest.implicits.asset_path.c_str(), std::ios::binary).read(tmp_buf.data(), std::span(tmp_buf).size_bytes());
 
 	char* buf_ptr = tmp_buf.data();
 	this->base_layer_id = getBufData<uint8_t>(buf_ptr);

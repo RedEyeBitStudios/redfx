@@ -97,9 +97,9 @@ void ClassImpl::submitTransfer()
 			[&resource, this, selected_unit, &asset_name, &virtual_staging_buf, &current_staging_offset](auto& ext)
 			{
 				using T = std::decay_t<decltype(ext)>;
-				using ExtensionsSet = Subsystems::ResourcesManagerRoot::ResourceManifest::Extensions;
+				using ResourceManifestClasses = Subsystems::ResourcesManagerRoot::ResourceManifestClasses;
 
-				if constexpr(std::is_same_v<T, ExtensionsSet::Extension_Font>)
+				if constexpr(std::is_same_v<T, ResourceManifestClasses::Manifest_RedFXFont>)
 				{
 					auto font = static_cast<Subsystems::ResourcesManagerRoot::ResourceData_Font*>(resource->data.get());
 					std::vector<VkBuffer*> bufs;
@@ -150,7 +150,7 @@ void ClassImpl::submitTransfer()
 					}
 					this->memory_manager_data.assets_gpu[asset_name.data()] = std::move(gpgpu_cache);
 				}
-				else if constexpr(std::is_same_v<T, ExtensionsSet::Extension_RedFXUI>)
+				else if constexpr(std::is_same_v<T, ResourceManifestClasses::Manifest_RedFXUI>)
 				{
 					return;
 				}
@@ -159,7 +159,7 @@ void ClassImpl::submitTransfer()
 					static_assert(false, "Unimplemented branch.");
 				}
 			},
-			resource->manifest_ptr->extension
+			resource->manifest_ptr->manifest
 		);
 	}
 	vkUnmapMemory(this->dvc, selected_unit->buffer_mem);

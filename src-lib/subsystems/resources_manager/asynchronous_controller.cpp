@@ -24,11 +24,11 @@ void ClassImpl::transfer(AsyncTransferUnit& transfer_unit)
 					{
 						using T = std::decay_t<decltype(ext)>;
 					
-						if constexpr(std::is_same_v<T, ResourceManifest::Extensions::Extension_Font>)
+						if constexpr(std::is_same_v<T, ResourceManifestClasses::Manifest_RedFXFont>)
 						{
 							entry->data = std::move(std::make_unique<ResourceData_Font>(*entry->manifest_ptr));
 						}
-						else if constexpr(std::is_same_v<T, ResourceManifest::Extensions::Extension_RedFXUI>)
+						else if constexpr(std::is_same_v<T, ResourceManifestClasses::Manifest_RedFXUI>)
 						{
 							entry->data = std::move(std::make_unique<ResourceData_RedFXUI>(*entry->manifest_ptr));
 						}
@@ -37,7 +37,7 @@ void ClassImpl::transfer(AsyncTransferUnit& transfer_unit)
 							static_assert(false, "Unimplemented branch.");
 						}
 					},
-					entry->manifest_ptr->extension
+					entry->manifest_ptr->manifest
 				);
 			}
 			transfer_unit.status = AsyncTransferUnitStatus::IDLE;
@@ -65,7 +65,7 @@ void ClassImpl::submitQueue()
 		{
 			continue;
 		}
-		const auto file_size = resource_entry.manifest_ptr->general.file_size;
+		const auto file_size = resource_entry.manifest_ptr->implicits.file_size;
 
 		io_thread_size_summary += file_size;
 		unit_work.push_back(&resource_entry);

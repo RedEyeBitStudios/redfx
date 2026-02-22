@@ -78,7 +78,7 @@ set(SRC_LIB_UI
 )
 set(SRC_LIB_RESOURCE_MANAGER
     "src-lib/subsystems/resources_manager/root.cpp"
-    "src-lib/subsystems/resources_manager/resource_data_font.cpp"
+    "src-lib/subsystems/resources_manager/resource_data_redfxfont.cpp"
     "src-lib/subsystems/resources_manager/resource_data_redfxui.cpp"
     "src-lib/subsystems/resources_manager/asynchronous_controller.cpp"
 )

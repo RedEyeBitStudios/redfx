@@ -20,10 +20,13 @@ namespace nxcraft::intern::subsystems
 	public:
 		enum class AssetType
 		{
-			IMAGE_PNG,
-			IMAGE_KTX,
+			TEXTURE,
+			//IMAGE_KTX_BPTC,
+			//IMAGE_KTX_ASTC_4X4,
+			//IMAGE_KTX_ASTC_8X8,
+			//IMAGE_KTX_ASTC_12X12,
 			REDFX_UI,
-			REDFX_LANGUAGE_TRANSLATION,
+			REDFX_LANG,
 			REDFX_FONT
 		};
 
@@ -68,38 +71,60 @@ namespace nxcraft::intern::subsystems
 			void fill(UI& ui) const;
 		};
 
+		struct ResourceManifestClasses
+		{
+			struct ManifestHeader
+			{
+				uint16_t fmt_version;
+				std::string title;
+			};
+
+			struct Manifest_RedFXFont : public ManifestHeader
+			{
+
+			};
+			struct Manifest_RedFXUI : public ManifestHeader
+			{
+				bool init;
+			};
+			struct Manifest_RedFXLang : public ManifestHeader
+			{
+				struct Entry
+				{
+					struct Address
+					{
+						std::string page;
+						std::string box_name;
+					} address;
+					std::string text;
+				};
+
+				std::vector<Entry> content;
+			};
+			struct Manifest_Texture : public ManifestHeader
+			{
+			};
+		};
+
 		struct ResourceManifest
 		{
-			class Extensions
-			{
-			public:
-				struct Extension_Font
-				{
-					std::string name;
-				};
-				struct Extension_RedFXUI
-				{
-					bool active_on_init;
-				};
-			};
-			
-			struct General
-			{
-				std::filesystem::path path;
-				uint64_t file_size;
-			} general;
-
-			using Extension = std::variant
+			using AssetManifest = std::variant
 			<
-				Extensions::Extension_Font,
-				Extensions::Extension_RedFXUI
+				ResourceManifestClasses::Manifest_RedFXFont,
+				//ResourceManifestClasses::Manifest_RedFXLang,
+				ResourceManifestClasses::Manifest_RedFXUI
+				//ResourceManifestClasses::Manifest_Texture
 			>;
-			Extension extension;
+			struct
+			{
+				std::filesystem::path asset_path;
+				uint64_t file_size;
+			} implicits;
+			AssetManifest manifest;
 		};
 
 		struct ResourceCache
 		{
-			
 			ResourceManifest* manifest_ptr;
 			std::unique_ptr<ResourceData> data;
 		};
@@ -109,8 +134,6 @@ namespace nxcraft::intern::subsystems
 		std::unordered_map<AssetType, std::vector<ResourceManifest>> manifests;
 		std::unordered_map<std::string, ResourceCache> resources;
 		void searchForManifests();
-		[[nodiscard]] bool validateManifest(const ResourceManifest& m);
-		[[nodiscard]] bool validateManifestSection(std::vector<uint64_t>&& parameters, const bool validation_result);
 		void preCacheAssets();
 
 		void loadFont(const ResourceManifest& manifest);
