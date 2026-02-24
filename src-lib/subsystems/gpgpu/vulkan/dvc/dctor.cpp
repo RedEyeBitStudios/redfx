@@ -228,6 +228,11 @@ void ClassImpl::destroyTransferQueues()
 						vkDestroyBuffer(this->dvc, data.v_buffer, nullptr);
 					}
 				}
+				else if constexpr (std::is_same_v<T, ClassImpl::ResourceClasses::Resource_Image>)
+				{
+					vkDestroyImage(this->dvc, asset.image, nullptr);
+					vkDestroyImageView(this->dvc, asset.view, nullptr);
+				}
 				else
 				{
 					static_assert(false, "Branch unimplemented.");

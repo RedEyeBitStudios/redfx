@@ -21,3 +21,16 @@ VkShaderModule ClassImpl::makeShader(const GPGPU_Device_Vulkan::Commons& commons
 
 	return cache;
 }
+
+void ClassImpl::prepareDescriptors(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data)
+{
+
+}
+void ClassImpl::preparePipelines(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data)
+{
+
+}
+void ClassImpl::preparePipelineLayouts(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data)
+{
+	
+}

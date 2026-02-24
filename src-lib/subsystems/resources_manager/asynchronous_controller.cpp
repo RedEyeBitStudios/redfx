@@ -32,6 +32,10 @@ void ClassImpl::transfer(AsyncTransferUnit& transfer_unit)
 						{
 							entry->data = std::move(std::make_unique<ResourceData_RedFXUI>(*entry->manifest_ptr));
 						}
+						else if constexpr(std::is_same_v<T, ResourceManifestClasses::Manifest_Texture>)
+						{
+							entry->data = std::move(std::make_unique<ResourceData_Image>(*entry->manifest_ptr));
+						}
 						else
 						{
 							static_assert(false, "Unimplemented branch.");

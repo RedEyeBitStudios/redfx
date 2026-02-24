@@ -2,11 +2,16 @@
 #include <vulkan/vulkan.h>
 #include "../../../bases/gpgpu/root_base.hpp"
 #include "devices.hpp"
+#include <any>
 
 namespace nxcraft::intern::subsystems
 {
 	class GPGPU_ProcessorStageResources_Vulkan : public GPGPU_Device::GPGPU_ProcessorStageResources
 	{
+	protected:
+		virtual void prepareDescriptors(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data);
+		virtual void preparePipelines(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data);
+		virtual void preparePipelineLayouts(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data);
 	public:
 		struct ShaderInfo
 		{

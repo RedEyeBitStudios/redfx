@@ -68,16 +68,15 @@ namespace nxcraft::intern::subsystems
 			} msaa;
 		} images;
 
-		struct
+		struct BoxBuffer
 		{
 			VkBuffer uniform_buffer = VK_NULL_HANDLE;
 			VkDeviceAddress uniform_buffer_address;
-		} box_color;
-		struct
-		{
-			VkBuffer uniform_buffer = VK_NULL_HANDLE;
-			VkDeviceAddress uniform_buffer_address;
-		} box_text;
+		};
+
+		BoxBuffer box_color;
+		BoxBuffer box_text;
+		BoxBuffer box_image;
 
 		VkFence cmd_fence = VK_NULL_HANDLE;
 		VkFramebuffer framebuffer;

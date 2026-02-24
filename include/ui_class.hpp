@@ -56,17 +56,24 @@ namespace nxcraft
 			};
 		};
 
-		struct ColorBox : public BoxProperties::PositionPixel, BoxProperties::DimensionsPixel, BoxProperties::ColorRGBA, BoxProperties::LayersStack, BoxProperties::Mask
+		using BoxProps = BoxProperties;
+
+		struct ColorBox : public BoxProps::PositionPixel, BoxProps::DimensionsPixel, BoxProps::ColorRGBA, BoxProps::LayersStack, BoxProps::Mask
 		{
 			
 		};
-		struct TextBox : public BoxProperties::PositionPixel, BoxProperties::Text, BoxProperties::ColorRGBA, BoxProperties::LayersStack, BoxProperties::Mask, BoxProperties::SizePixel, BoxProperties::Resource
+		struct TextBox : public BoxProps::PositionPixel, BoxProps::Text, BoxProps::ColorRGBA, BoxProps::LayersStack, BoxProps::Mask, BoxProps::SizePixel, BoxProps::Resource
+		{
+
+		};
+		struct ImageBox : public BoxProps::PositionPixel, BoxProps::SizePixel, BoxProps::LayersStack, BoxProps::Mask, BoxProps::Resource
 		{
 
 		};
 
 		std::unordered_map<std::string, ColorBox> boxes;
 		std::unordered_map<std::string, TextBox> text_boxes;
+		std::unordered_map<std::string, ImageBox> image_boxes;
 		uint8_t base_layer_id = 0;
 
 		UI(std::string_view page_name);

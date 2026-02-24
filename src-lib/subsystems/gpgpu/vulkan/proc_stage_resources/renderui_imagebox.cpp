@@ -1,89 +1,124 @@
-#include "renderui_colorbox.hpp"
+#include "renderui_imagebox.hpp"
 #include <format>
 
 
-using ClassImpl = nxcraft::intern::subsystems::GPGPU_ProcessorStageResources_RenderUI_ColorBox;
+using ClassImpl = nxcraft::intern::subsystems::GPGPU_ProcessorStageResources_RenderUI_ImageBox;
 
-namespace nxcraft::intern::subsystems
+ClassImpl::GPGPU_ProcessorStageResources_RenderUI_ImageBox(const GPGPU_Device_Vulkan::Commons& commons, const GPGPU_ProcessorStageResources_RenderUI_General& renderui_generals)
 {
-	static void prepareDescriptors(ClassImpl* ptr, const GPGPU_Device_Vulkan::Commons& commons)
-	{
-		/*
-		const std::vector<VkDescriptorSetLayoutBinding> desc_layout_bind_infos
-		{
-			VkDescriptorSetLayoutBinding 
-			{
-				.binding = 5,
-				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				.descriptorCount = 1,
-				.stageFlags = ptr->colorbox_shader.stage_flags,
-				.pImmutableSamplers = nullptr
-			},
-			VkDescriptorSetLayoutBinding 
-			{
-				.binding = 6,
-				.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				.descriptorCount = 1,
-				.stageFlags = ptr->colorbox_shader.stage_flags,
-				.pImmutableSamplers = nullptr
-			}
-		};
-		const VkDescriptorSetLayoutCreateInfo desc_layout_info
-		{
-			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = 0,
-			.bindingCount = static_cast<uint32_t>(desc_layout_bind_infos.size()),
-			.pBindings = desc_layout_bind_infos.data()
-		};
-		vkCreateDescriptorSetLayout(commons.dvc, &desc_layout_info, nullptr, &ptr->desc_layout);
-
-		const std::vector<VkDescriptorPoolSize> descs
-		{
-			VkDescriptorPoolSize
-			{
-				.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-				.descriptorCount = 2
-			}
-		};
-		const VkDescriptorPoolCreateInfo desc_allocation_info
-		{
-			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-			.pNext = nullptr,
-			.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
-			.maxSets = 1,
-			.poolSizeCount = static_cast<uint32_t>(descs.size()),
-			.pPoolSizes = descs.data()
-		};
-		vkCreateDescriptorPool(commons.dvc, &desc_allocation_info, nullptr, &ptr->descs_pool);
-
-		VkDescriptorSetAllocateInfo desc_set_info
-		{
-			.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-			.pNext = nullptr,
-			.descriptorPool = ptr->descs_pool,
-			.descriptorSetCount = 1,
-			.pSetLayouts = &ptr->desc_layout
-		};
-		vkAllocateDescriptorSets(commons.dvc, &desc_set_info, &ptr->desc_set);
-		*/
-	}
-}
-
-ClassImpl::GPGPU_ProcessorStageResources_RenderUI_ColorBox(const GPGPU_Device_Vulkan::Commons& commons, const GPGPU_ProcessorStageResources_RenderUI_General& renderui_generals)
-{
+	this->prepareDescriptors(commons, {});
 	this->preparePipelineLayouts(commons, {});
 	this->preparePipelines(commons, std::cref(renderui_generals));
+
+	const VkSamplerCreateInfo sampler_info
+	{
+		.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.magFilter = VK_FILTER_NEAREST,
+		.minFilter = VK_FILTER_LINEAR,
+		.addressModeU = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT,
+		.addressModeV = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT,
+		.addressModeW = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT,
+		.mipLodBias = 0.0f,
+		.anisotropyEnable = VK_FALSE,
+		.maxAnisotropy = VK_FALSE,
+		.compareEnable = VK_FALSE,
+		.compareOp = VK_COMPARE_OP_ALWAYS,
+		.minLod = 0.0f,
+		.maxLod = VK_LOD_CLAMP_NONE,
+		.borderColor = {},
+		.unnormalizedCoordinates = VK_FALSE
+	};
+	vkCreateSampler(commons.dvc, &sampler_info, nullptr, &this->resources.sampler);
 }
 void ClassImpl::flush(const GPGPU_Device_Vulkan::Commons& commons)
 {
 	vkDestroyPipelineLayout(commons.dvc, this->render_pipeline.layout, nullptr);
 	vkDestroyPipeline(commons.dvc, this->render_pipeline.handle, nullptr);
+	vkDestroyDescriptorSetLayout(commons.dvc, this->render_pipeline.descriptors_layout, nullptr);
+	vkDestroySampler(commons.dvc, this->resources.sampler, nullptr);
+	vkDestroyDescriptorPool(commons.dvc, this->descriptors.allocation, nullptr);
 }
 
+void ClassImpl::prepareDescriptors(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data)
+{
+	const std::vector<VkDescriptorSetLayoutBinding> desc_layout_bind_infos
+	{
+		VkDescriptorSetLayoutBinding 
+		{
+			.binding = 0,
+			.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.descriptorCount = 64,
+			.stageFlags = this->shaders[1].stage_flags,
+			.pImmutableSamplers = nullptr
+		}
+	};
+	const VkDescriptorSetLayoutCreateInfo desc_layout_info
+	{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.bindingCount = static_cast<uint32_t>(desc_layout_bind_infos.size()),
+		.pBindings = desc_layout_bind_infos.data()
+	};
+	vkCreateDescriptorSetLayout(commons.dvc, &desc_layout_info, nullptr, &this->render_pipeline.descriptors_layout);
+
+	const std::vector<VkDescriptorPoolSize> descs
+	{
+		VkDescriptorPoolSize
+		{
+			.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+			.descriptorCount = 64
+		}
+	};
+	const VkDescriptorPoolCreateInfo desc_allocation_info
+	{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+		.maxSets = 1,
+		.poolSizeCount = static_cast<uint32_t>(descs.size()),
+		.pPoolSizes = descs.data()
+	};
+	vkCreateDescriptorPool(commons.dvc, &desc_allocation_info, nullptr, &this->descriptors.allocation);
+
+	const VkDescriptorSetAllocateInfo desc_set_info
+	{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+		.pNext = nullptr,
+		.descriptorPool = this->descriptors.allocation,
+		.descriptorSetCount = 1,
+		.pSetLayouts = &this->render_pipeline.descriptors_layout
+	};
+	vkAllocateDescriptorSets(commons.dvc, &desc_set_info, &this->descriptors.set);
+
+	/*
+	VkDescriptorUpdateTemplateEntry
+	{
+		.dstBinding = 0,
+		.dstArrayElement = 0,
+		.descriptorCount = 64,
+		.descriptorType = 
+	}
+	const std::vector<VkDescriptorUpdateTemplateEntry> update_entries
+	{
+
+	};
+	const VkDescriptorUpdateTemplateCreateInfo template_info
+	{
+		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.descriptorUpdateEntryCount = 64,
+		.
+	}
+	vkCreateDescriptorUpdateTemplate(commons.dvc, )
+	*/
+}
 void ClassImpl::preparePipelineLayouts(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data)
 {
-	const VkPushConstantRange range
+	VkPushConstantRange range
 	{
 		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
 		.offset = 0,
@@ -94,8 +129,8 @@ void ClassImpl::preparePipelineLayouts(const GPGPU_Device_Vulkan::Commons& commo
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.pNext = nullptr,
 		.flags = 0,
-		.setLayoutCount = 0,
-		.pSetLayouts = nullptr,
+		.setLayoutCount = 1,
+		.pSetLayouts = &this->render_pipeline.descriptors_layout,
 		.pushConstantRangeCount = 1,
 		.pPushConstantRanges = &range
 	};
@@ -106,7 +141,6 @@ void ClassImpl::preparePipelines(const GPGPU_Device_Vulkan::Commons& commons, st
 	auto& generals_ref = std::any_cast<std::reference_wrapper<const GPGPU_ProcessorStageResources_RenderUI_General>>(any_data).get();
 
 	std::vector<VkShaderModule> shaders;
-	
 	for (auto& info : this->shaders)
 	{
 		shaders.push_back(ClassImpl::makeShader(commons, info.file_name));
@@ -128,7 +162,7 @@ void ClassImpl::preparePipelines(const GPGPU_Device_Vulkan::Commons& commons, st
 				.pSpecializationInfo = nullptr
 			}
 		);
-	}	
+	}
 
 	const VkPipelineVertexInputStateCreateInfo vertex_input_info
 	{

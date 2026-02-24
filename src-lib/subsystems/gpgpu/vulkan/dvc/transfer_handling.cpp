@@ -143,7 +143,6 @@ void ClassImpl::submitTransfer()
 
 						vkCmdCopyBuffer(selected_unit->cmd, selected_unit->staging_buffer, std::get<VkBuffer>(mem_block_info.resources[block_index].res), 1, &copy_info);
 
-						//vkCmdPipelineBarrier(selected_unit->cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr,
 						virtual_staging_buf += mem_block_info.resources[block_index].bytes_offset;
 						current_staging_offset += mem_block_info.resources[block_index].bytes_offset;
 						block_index++;
@@ -153,6 +152,127 @@ void ClassImpl::submitTransfer()
 				else if constexpr(std::is_same_v<T, ResourceManifestClasses::Manifest_RedFXUI>)
 				{
 					return;
+				}
+				else if constexpr(std::is_same_v<T, ResourceManifestClasses::Manifest_Texture>)
+				{
+					auto image = static_cast<Subsystems::ResourcesManagerRoot::ResourceData_Image*>(resource->data.get());
+					using ImageFormat = Subsystems::ResourcesManagerRoot::ResourceData_Image::Format;
+					std::vector<VkImage*> images;
+
+					ResourceClasses::Resource_Image gpgpu_cache;
+
+					std::unordered_map<ImageFormat, VkFormat> formats
+					{
+						{ ImageFormat::BW8, VK_FORMAT_R8_UNORM },
+						{ ImageFormat::RGB8, VK_FORMAT_R8G8B8_UNORM },
+						{ ImageFormat::RGBA8, VK_FORMAT_R8G8B8A8_UNORM }
+					};
+
+					const VkImageCreateInfo img_info
+					{
+						.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+						.pNext = nullptr,
+						.flags = 0,
+						.imageType = VK_IMAGE_TYPE_2D,
+						.format = formats[image->retrieveFormat()],
+						.extent = 
+						{
+							.width = image->retrieveResolution().x,
+							.height = image->retrieveResolution().y,
+							.depth = 1
+						},
+						.mipLevels = 1,
+						.arrayLayers = 1,
+						.samples = VK_SAMPLE_COUNT_1_BIT,
+						.tiling = VK_IMAGE_TILING_OPTIMAL,
+						.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+						.sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+						.queueFamilyIndexCount = 0,
+						.pQueueFamilyIndices = nullptr,
+						.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED
+					};
+
+					vkCreateImage(this->dvc, &img_info, nullptr, &gpgpu_cache.image);
+
+					gpgpu_cache.mem_block = this->allocate({ &gpgpu_cache.image }, {}, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+					memcpy(virtual_staging_buf, image->retrievePixelsData().data(), std::span(image->retrievePixelsData()).size_bytes());
+
+					VkImageMemoryBarrier img_barrier_info
+					{
+						.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+						.pNext = nullptr,
+						.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+						.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+						.oldLayout = VK_IMAGE_LAYOUT_PREINITIALIZED,
+						.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+						.srcQueueFamilyIndex = this->transfer.queue.family_index,
+						.dstQueueFamilyIndex = this->transfer.queue.family_index,
+						.image = gpgpu_cache.image,
+						.subresourceRange
+						{
+							.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+							.baseMipLevel = 0,
+							.levelCount = 1,
+							.baseArrayLayer = 0,
+							.layerCount = 1
+						}
+					};
+
+					vkCmdPipelineBarrier(selected_unit->cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &img_barrier_info);
+
+					const VkBufferImageCopy copy_info
+					{
+						.bufferOffset = current_staging_offset,
+						.bufferRowLength = {},
+						.imageSubresource = 
+						{
+							.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+							.mipLevel = 0,
+							.baseArrayLayer = 0,
+							.layerCount = 1
+						},
+						.imageOffset = {},
+						.imageExtent = img_info.extent
+					};
+
+					vkCmdCopyBufferToImage(selected_unit->cmd, selected_unit->staging_buffer, gpgpu_cache.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_info);
+
+					img_barrier_info.dstQueueFamilyIndex = this->main_queue.queue_family_index;
+					img_barrier_info.oldLayout = img_barrier_info.newLayout;
+					img_barrier_info.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+					vkCmdPipelineBarrier(selected_unit->cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &img_barrier_info);
+
+					current_staging_offset += this->getMemBlockInfo(gpgpu_cache.mem_block).size_summary;
+					virtual_staging_buf += this->getMemBlockInfo(gpgpu_cache.mem_block).size_summary;
+
+					const VkImageViewCreateInfo view_info
+					{
+						.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+						.pNext = nullptr,
+						.flags = 0,
+						.image = gpgpu_cache.image,
+						.viewType = VK_IMAGE_VIEW_TYPE_2D,
+						.format = img_info.format,
+						.components = 
+						{
+							.r = VK_COMPONENT_SWIZZLE_IDENTITY,
+							.g = VK_COMPONENT_SWIZZLE_IDENTITY,
+							.b = VK_COMPONENT_SWIZZLE_IDENTITY,
+							.a = VK_COMPONENT_SWIZZLE_IDENTITY
+						},
+						.subresourceRange = 
+						{
+							.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+							.baseMipLevel = 0,
+							.levelCount = 1,
+							.baseArrayLayer = 0,
+							.layerCount = 1
+						}
+					};
+					vkCreateImageView(this->dvc, &view_info, nullptr, &gpgpu_cache.view);
+
+					this->memory_manager_data.assets_gpu[asset_name.data()] = std::move(gpgpu_cache);
 				}
 				else
 				{

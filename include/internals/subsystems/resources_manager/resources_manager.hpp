@@ -71,6 +71,29 @@ namespace nxcraft::intern::subsystems
 			void fill(UI& ui) const;
 		};
 
+		class ResourceData_Image : public ResourceData
+		{
+		public:
+			enum class Format
+			{
+				BW8 = 1,
+				RGB8 = 3,
+				RGBA8 = 4,
+				BW16 = 1 + 4,
+				RGB16 = 3 + 4,
+				RGBA16 = 4 + 4
+			};
+		private:
+			nexora_utils::math::ui16vec2 resolution;
+			mutable std::vector<uint8_t> pixels_data;
+			Format format;
+		public:
+			ResourceData_Image(const ResourceManifest& manifest);
+
+			nexora_utils::math::ui16vec2 retrieveResolution() const;
+			std::span<uint8_t> retrievePixelsData() const;
+			const Format retrieveFormat() const;
+		};
 		struct ResourceManifestClasses
 		{
 			struct ManifestHeader
@@ -112,8 +135,8 @@ namespace nxcraft::intern::subsystems
 			<
 				ResourceManifestClasses::Manifest_RedFXFont,
 				//ResourceManifestClasses::Manifest_RedFXLang,
-				ResourceManifestClasses::Manifest_RedFXUI
-				//ResourceManifestClasses::Manifest_Texture
+				ResourceManifestClasses::Manifest_RedFXUI,
+				ResourceManifestClasses::Manifest_Texture
 			>;
 			struct
 			{

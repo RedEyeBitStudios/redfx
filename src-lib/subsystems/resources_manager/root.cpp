@@ -109,7 +109,7 @@ ClassImpl::ResourceManifest readManifestXML(const std::filesystem::path& path, c
 			{ std::move(header) }
 		};
 		manifest.implicits.asset_path = path.relative_path().replace_extension(".tga");
-		//manifest.manifest = meta_cache;
+		manifest.manifest = meta_cache;
 	}
 	else
 	{
@@ -145,95 +145,6 @@ void ClassImpl::searchForManifests()
 			}
 		}
 	}
-
-	/*
-
-	for (const auto& f : std::filesystem::directory_iterator("assets"))
-	{
-		if (f.is_regular_file())
-		{
-			const std::regex r("(\\S+)\\.manifest\\.xml");
-			std::smatch m;
-
-			const auto manifest_filename = f.path().filename().generic_string();
-
-			if (std::regex_match(manifest_filename, m, r))
-			{
-				
-				const std::string manifest_name = m[1].str();
-				
-				
-
-				const auto root = doc.FirstChildElement();
-				
-				const auto extension_header = root->FirstChildElement("extension");
-
-				// Firstly read general section.
-				ResourceManifest manifest
-				{
-					.general
-					{
-						.path = general_header->FirstChildElement("path")->GetText(),
-						.file_size = std::filesystem::file_size(general_header->FirstChildElement("path")->GetText())
-					}
-				};
-
-				std::string format;
-				if (auto fmt = general_header->FirstChildElement("format"); fmt != nullptr)
-				{
-					format = general_header->FirstChildElement("format")->GetText();
-				}
-				
-				// Determine what kind of manifest extension is.
-				std::unordered_map<std::string_view, AssetType> type_pairs
-				{
-					{ "REDFX_FONT", AssetType::REDFX_FONT },
-					{ "REDFX_UI", AssetType::REDFX_UI },
-					{ "IMAGE_TGA", AssetType::IMAGE_TGA }
-				};
-
-				if (type_pairs.contains(format))
-				{
-					const AssetType type = type_pairs[format];
-
-					if (type == AssetType::REDFX_FONT)
-					{
-						manifest.extension = ResourceManifest::Extensions::Extension_Font
-						{
-							.name = extension_header->FirstChildElement("name")->GetText()
-						};
-					}
-					else if (type == AssetType::REDFX_UI)
-					{
-						manifest.extension = ResourceManifest::Extensions::Extension_RedFXUI
-						{
-							.active_on_init = extension_header->FirstChildElement("active_on_init")->BoolText()
-						};
-					}
-					else
-					{
-						assert(false); // Unimplemented asset type handling.
-					}
-
-					if (this->validateManifest(std::move(manifest)))
-					{
-						this->manifests[type].push_back(manifest);
-					}
-					else
-					{
-						// TODO: Handle this error.
-						NXC_LOG_HELPER(std::format("Invalid manifest: {}.", f.path().generic_string()), nxcraft::Subsystems::LogRoot::Message::MARK_AS_CRITICAL_ERROR | nxcraft::Subsystems::LogRoot::Message::SHOW_MESSAGE_BOX);
-					}
-				}
-				else
-				{
-					// TODO: Handle this error.
-					NXC_LOG_HELPER(std::format("Invalid asset type/format in manifest: {}.", f.path().generic_string()), nxcraft::Subsystems::LogRoot::Message::MARK_AS_CRITICAL_ERROR | nxcraft::Subsystems::LogRoot::Message::SHOW_MESSAGE_BOX);
-				}
-			}
-		}
-	}
-		*/
 }
 void ClassImpl::preCacheAssets()
 {
@@ -252,7 +163,6 @@ void ClassImpl::preCacheAssets()
 
 					if constexpr(std::is_base_of_v<ResourceManifestClasses::ManifestHeader, T>)
 					{
-						printf("METADATA: %s\n", metadata.title.c_str());
 						this->resources[metadata.title] = ResourceCache
 						{
 							.manifest_ptr = &manifest,
@@ -265,29 +175,6 @@ void ClassImpl::preCacheAssets()
 			);
 		}
 	}
-
-	/*
-	for (auto& manifest : this->manifests[AssetType::REDFX_FONT])
-	{
-		const auto& meta = std::get<>(manifest.manifest);
-		this->resources[meta.title] = ResourceCache
-		{
-			.manifest_ptr = &manifest,
-			.data = nullptr
-		};
-		NXC_LOG_HELPER(std::format(fmt, meta.title));
-	}
-	for (auto& manifest : this->manifests[AssetType::REDFX_UI])
-	{
-		const auto& meta = std::get<ResourceManifestClasses::Manifest_RedFXUI>(manifest.manifest);
-		this->resources[meta.title] = ResourceCache
-		{
-			.manifest_ptr = &manifest,
-			.data = nullptr
-		};
-		NXC_LOG_HELPER(std::format(fmt, meta.title));
-	}
-		*/
 }
 void ClassImpl::refresh()
 {

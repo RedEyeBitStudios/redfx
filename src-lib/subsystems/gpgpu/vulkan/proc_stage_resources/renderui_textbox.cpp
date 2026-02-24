@@ -4,13 +4,41 @@ using ClassImpl = nxcraft::intern::subsystems::GPGPU_ProcessorStageResources_Ren
 
 ClassImpl::GPGPU_ProcessorStageResources_RenderUI_TextBox(const GPGPU_Device_Vulkan::Commons& commons, const GPGPU_ProcessorStageResources_RenderUI_General& renderui_generals)
 {
-	std::vector<VkShaderModule> shaders;
+	this->preparePipelineLayouts(commons, {});
+	this->preparePipelines(commons, std::cref(renderui_generals));
+}
+
+void ClassImpl::flush(const GPGPU_Device_Vulkan::Commons& commons)
+{
+	vkDestroyPipelineLayout(commons.dvc, this->render_pipeline.layout, nullptr);
+	vkDestroyPipeline(commons.dvc, this->render_pipeline.handle, nullptr);
+}
+
+void ClassImpl::preparePipelineLayouts(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data)
+{
 	VkPushConstantRange range
 	{
 		.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
 		.offset = 0,
 		.size = 16
 	};
+	const VkPipelineLayoutCreateInfo pip_layout_info
+	{
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+		.pNext = nullptr,
+		.flags = 0,
+		.setLayoutCount = 0,
+		.pSetLayouts = nullptr,
+		.pushConstantRangeCount = 1,
+		.pPushConstantRanges = &range
+	};
+	vkCreatePipelineLayout(commons.dvc, &pip_layout_info, nullptr, &this->render_pipeline.layout);
+}
+void ClassImpl::preparePipelines(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data)
+{
+	auto& generals_ref = std::any_cast<std::reference_wrapper<const GPGPU_ProcessorStageResources_RenderUI_General>>(any_data).get();
+
+	std::vector<VkShaderModule> shaders;
 	for (auto& info : this->shaders)
 	{
 		shaders.push_back(ClassImpl::makeShader(commons, info.file_name));
@@ -33,20 +61,6 @@ ClassImpl::GPGPU_ProcessorStageResources_RenderUI_TextBox(const GPGPU_Device_Vul
 			}
 		);
 	}
-
-	const VkPipelineLayoutCreateInfo pip_layout_info
-	{
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-		.pNext = nullptr,
-		.flags = 0,
-		.setLayoutCount = 0,
-		.pSetLayouts = nullptr,
-		.pushConstantRangeCount = 1,
-		.pPushConstantRanges = &range
-	};
-	vkCreatePipelineLayout(commons.dvc, &pip_layout_info, nullptr, &this->render_pipeline.layout);
-
-	
 	const std::vector<VkVertexInputBindingDescription> vertex_bindings_info
 	{
 		VkVertexInputBindingDescription
@@ -181,7 +195,7 @@ ClassImpl::GPGPU_ProcessorStageResources_RenderUI_TextBox(const GPGPU_Device_Vul
 		.pColorBlendState = &blend_info,
 		.pDynamicState = &dynamics_info,
 		.layout = this->render_pipeline.layout,
-		.renderPass = renderui_generals.renderpass,
+		.renderPass = generals_ref.renderpass,
 		.subpass = 0,
 		.basePipelineHandle = VK_NULL_HANDLE,
 		.basePipelineIndex = 0
@@ -192,10 +206,4 @@ ClassImpl::GPGPU_ProcessorStageResources_RenderUI_TextBox(const GPGPU_Device_Vul
 	{
 		vkDestroyShaderModule(commons.dvc, shader_module, nullptr);
 	}
-}
-
-void ClassImpl::flush(const GPGPU_Device_Vulkan::Commons& commons)
-{
-	vkDestroyPipelineLayout(commons.dvc, this->render_pipeline.layout, nullptr);
-	vkDestroyPipeline(commons.dvc, this->render_pipeline.handle, nullptr);
 }

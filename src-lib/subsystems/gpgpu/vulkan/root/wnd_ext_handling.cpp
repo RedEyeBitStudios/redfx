@@ -35,6 +35,7 @@ void ClassImpl::clearWindowExtension(GPGPU_WindowExtension* ext)
 		vkDestroyFence(primary_commons.dvc, f.cmd_fence, nullptr);
 		vkDestroyBuffer(primary_commons.dvc, f.box_color.uniform_buffer, nullptr);
 		vkDestroyBuffer(primary_commons.dvc, f.box_text.uniform_buffer, nullptr);
+		vkDestroyBuffer(primary_commons.dvc, f.box_image.uniform_buffer, nullptr);
 		vkDestroyFramebuffer(primary_commons.dvc, f.framebuffer, nullptr);
 	}
 
@@ -123,8 +124,10 @@ void ClassImpl::makeWindowExtension(GPGPU_WindowExtension* ext)
 
 		vkCreateBuffer(commons.dvc, &buf_info, nullptr, &f.box_color.uniform_buffer);
 		vkCreateBuffer(commons.dvc, &buf_info, nullptr, &f.box_text.uniform_buffer);
+		vkCreateBuffer(commons.dvc, &buf_info, nullptr, &f.box_image.uniform_buffer);
 		buffers.push_back(&f.box_color.uniform_buffer);
 		buffers.push_back(&f.box_text.uniform_buffer);
+		buffers.push_back(&f.box_image.uniform_buffer);
 	}
 
 	wnd_ext->allocations.ui.constant_memory_blocks.uniform_buffer_device = this->primary_dvc->allocate_bda(buffers, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
@@ -139,6 +142,8 @@ void ClassImpl::makeWindowExtension(GPGPU_WindowExtension* ext)
 		f.box_color.uniform_buffer_address = nxcraft::intern::vk::vkGetBufferDeviceAddressKHR(commons.dvc, &addr_info);
 		addr_info.buffer = f.box_text.uniform_buffer;
 		f.box_text.uniform_buffer_address = nxcraft::intern::vk::vkGetBufferDeviceAddressKHR(commons.dvc, &addr_info);
+		addr_info.buffer = f.box_image.uniform_buffer;
+		f.box_image.uniform_buffer_address = nxcraft::intern::vk::vkGetBufferDeviceAddressKHR(commons.dvc, &addr_info);
 	}
 }
 void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_WindowExtension_Vulkan* wnd_ext)
@@ -290,7 +295,7 @@ void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_W
 
 	for (auto i = 0; i < wnd_ext->frames.ui->frames.size(); i++)
 	{
-		VkImageViewCreateInfo image_view_info
+		VkImageViewCreateInfo image_view_info 
 		{
 			.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 			.pNext = nullptr,

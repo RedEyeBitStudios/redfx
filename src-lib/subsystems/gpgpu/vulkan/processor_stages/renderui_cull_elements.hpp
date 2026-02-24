@@ -11,6 +11,7 @@ namespace nxcraft::intern::subsystems
 	private:
 		void cullColorBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp& resources, UI& pg);
 		void cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp& resources, UI& pg, GPGPU_Device_Vulkan* commons, VidRoot::VidWindows::VidWndInfo& info);
+		void cullImageBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp& resources, UI& pg, GPGPU_Device_Vulkan* commons);
 	public:
 		GPGPU_ProcessorStage_RenderUI_CullElements() = default;
 		virtual ~GPGPU_ProcessorStage_RenderUI_CullElements() = default;

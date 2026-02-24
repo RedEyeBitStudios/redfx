@@ -63,11 +63,19 @@ namespace nxcraft::intern::subsystems
 
 				std::unordered_map<uint32_t, CharacterData> characters_data;
 			};
+			struct Resource_Image
+			{
+				bool transitioned = false;
+				VkDeviceMemory mem_block;
+				VkImage image;
+				VkImageView view;
+			};
 		};
 
 		using GPGPU_Resource = std::variant
 		<
-			ResourceClasses::Resource_RedFX_Font
+			ResourceClasses::Resource_RedFX_Font,
+			ResourceClasses::Resource_Image
 		>;
 	protected:
 		DeviceInfo dvc_info;

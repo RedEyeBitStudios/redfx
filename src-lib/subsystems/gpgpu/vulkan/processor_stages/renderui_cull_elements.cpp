@@ -4,17 +4,19 @@
 #include <type_traits>
 #include <subsystems.hpp>
 #include <locale>
+#include <algorithm>
 
 using ClassImpl = nxcraft::intern::subsystems::GPGPU_ProcessorStage_RenderUI_CullElements;
 
 void ClassImpl::process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_Device_Vulkan* commons, std::any any_data)
 {
-	auto& cull_result = std::any_cast<std::reference_wrapper<GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp>>(any_data).get();
+	auto& cull_result = std::any_cast<std::reference_wrapper<GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp>>(std::ref(any_data)).get();
 	for (auto& pg : info.ui_ext->active)
 	{
 		this->cullColorBoxes(cull_result, *pg);
 		this->cullTextBoxes(cull_result, *pg, commons, info);
-	}	
+		this->cullImageBoxes(cull_result, *pg, commons);
+	}
 }
 void ClassImpl::cullColorBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp& resources, UI& pg)
 {
@@ -94,6 +96,49 @@ void ClassImpl::cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElement
 					}
 				}
 			}
+		}
+	}
+}
+void ClassImpl::cullImageBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp& resources, UI& pg, GPGPU_Device_Vulkan* commons)
+{
+	for (auto& box : std::views::values(pg.image_boxes))
+	{
+		const Subsystems::ResourcesManagerRoot::ResourceCache* res = Subsystems::getSubsystem_ResourcesManager().retrieveResourceView(box.resource);
+		const auto gpgpu_res = commons->retrieveResource(box.resource);
+
+		if (res->data == nullptr || gpgpu_res == nullptr)
+		{
+			commons->addTransferQueue(box.resource);
+			continue;
+		}
+		if (box.mask & UI::BoxProperties::BoxMask::IS_ACTIVE)
+		{	
+			const auto layer_id = pg.base_layer_id + box.layer_id;
+
+			auto& images_to_bind = resources.layers_data[layer_id].images_to_bind;
+
+			if (!std::ranges::contains(images_to_bind, box.resource))
+			{
+				images_to_bind.push_back(box.resource);
+			}
+			
+			const auto resource = static_cast<const Subsystems::ResourcesManagerRoot::ResourceData_Image*>(res->data.get());
+			const auto resource_resolution = static_cast<f16vec2>(resource->retrieveResolution());
+			const auto aspect = resource_resolution.y / resource_resolution.x;
+			const auto height = static_cast<uint16_t>(box.size * aspect);
+
+			const auto iterator = std::ranges::find(images_to_bind, box.resource);
+			const uint16_t index = static_cast<uint16_t>(iterator.base() - images_to_bind.data());
+			
+			resources.layers_data[layer_id].image_boxes.push_back
+			(
+				std::decay_t<decltype(resources)>::UniformData_ImageBox
+				{
+					.lo_v = box.position_px,
+					.hi_v = box.position_px + ui16vec2(box.size, height),
+					.image_index = index
+				}
+			);
 		}
 	}
 }

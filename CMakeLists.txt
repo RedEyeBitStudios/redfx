@@ -60,6 +60,7 @@ set(SRC_LIB_GPGPU
     "src-lib/subsystems/gpgpu/vulkan/root/handling/proc_stage.cpp"
     "src-lib/subsystems/gpgpu/vulkan/processor_stages/renderui_cull_elements.cpp"
     "src-lib/subsystems/gpgpu/vulkan/processor_stages/render_ui.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_imagebox.cpp"
     "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_colorbox.cpp"
     "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_textbox.cpp"
     "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_general.cpp"
@@ -80,6 +81,7 @@ set(SRC_LIB_RESOURCE_MANAGER
     "src-lib/subsystems/resources_manager/root.cpp"
     "src-lib/subsystems/resources_manager/resource_data_redfxfont.cpp"
     "src-lib/subsystems/resources_manager/resource_data_redfxui.cpp"
+    "src-lib/subsystems/resources_manager/resource_data_image.cpp"
     "src-lib/subsystems/resources_manager/asynchronous_controller.cpp"
 )
 
@@ -95,6 +97,7 @@ target_sources(${PROJECT_NAME} PRIVATE
     "src-lib/subsystems/time/point.cpp"
     "src-lib/subsystems/subsystems.cpp"
     "src-lib/utils/file_utils.cpp"
+    "src-lib/stb.cpp"
     "src-lib/ui_class.cpp"
     "src-lib/main.cpp"
 )
@@ -124,6 +127,8 @@ set(VULKAN_SHADER_SOURCES
     "ui_colorbox.frag"
     "ui_textbox.vert"
     "ui_textbox.frag"
+    "ui_imagebox.vert"
+    "ui_imagebox.frag"
 )
 
 message(STATUS "Compiling Vulkan shaders")

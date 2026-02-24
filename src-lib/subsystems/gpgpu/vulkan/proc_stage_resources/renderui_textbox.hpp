@@ -9,6 +9,9 @@ namespace nxcraft::intern::subsystems
 
 	class GPGPU_ProcessorStageResources_RenderUI_TextBox : public GPGPU_ProcessorStageResources_Vulkan
 	{
+	protected:
+		void preparePipelineLayouts(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data) override;
+		void preparePipelines(const GPGPU_Device_Vulkan::Commons& commons, std::any any_data) override;
 	public:
 		const std::vector<ShaderInfo> shaders
 		{
@@ -28,16 +31,8 @@ namespace nxcraft::intern::subsystems
 		{
 			VkPipeline handle;
 			VkPipelineLayout layout;
-			VkDescriptorSetLayout descriptors_layout;
 		} render_pipeline;
-
-		struct
-		{
-			VkDescriptorPool allocation;
-			VkDescriptorSet set;
-			VkDescriptorUpdateTemplate desc_update_template;
-		} descriptors;
-
+		
 		GPGPU_ProcessorStageResources_RenderUI_TextBox(const GPGPU_Device_Vulkan::Commons& commons, const GPGPU_ProcessorStageResources_RenderUI_General& renderui_generals);
 		virtual ~GPGPU_ProcessorStageResources_RenderUI_TextBox() = default;
 		void flush(const GPGPU_Device_Vulkan::Commons& commons) override;
