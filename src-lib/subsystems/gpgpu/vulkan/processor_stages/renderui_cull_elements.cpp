@@ -75,8 +75,8 @@ void ClassImpl::cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElement
 						if (character != nullptr)
 						{
 							next = character->width;
-							
-							characters[utf32_code].push_back
+
+							resources.layers_data[layer_id].text_boxes.push_back
 							(
 								std::decay_t<decltype(resources)>::UniformData_TextBox
 								{
@@ -85,13 +85,16 @@ void ClassImpl::cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElement
 									.size_px = static_cast<std::float16_t>(box.size)
 								}
 							);
-							resources.layers_data[layer_id].text_boxes_info[utf32_code]++;
+							resources.layers_data[layer_id].text_boxes_info.push_back
+							(
+								std::decay_t<decltype(resources)>::TextCharacterInfo
+								{
+									.character = utf32_code,
+									.resource = box.resource
+								}
+							);
 						}
 						pos.x += box.size * next * aspect;
-					}
-					for (auto& value : std::views::values(characters))
-					{
-						resources.layers_data[layer_id].text_boxes.append_range(std::move(value));
 					}
 				}
 			}

@@ -38,11 +38,17 @@ namespace nxcraft::intern::subsystems
 			uint16_t image_index;
 		};
 
+		struct TextCharacterInfo
+		{
+			uint32_t character;
+			std::string resource;
+		};
+
 		using UniformData_ColorBoxes = std::vector<UniformData_ColorBox>;
 		using UniformData_TextBoxes = std::vector<UniformData_TextBox>;
 		using UniformData_ImageBoxes = std::vector<UniformData_ImageBox>;
 		using UniformData_BitmapBoxes = std::vector<UniformData_BitmapBox>;
-		using Info_TextBoxes = std::unordered_map<uint32_t, uint32_t>;
+		using Info_TextBoxes = std::vector<TextCharacterInfo>;
 		using Info_ImageBoxes = std::vector<std::string>;
 		using Info_BitmapBoxes = Info_ImageBoxes;
 		

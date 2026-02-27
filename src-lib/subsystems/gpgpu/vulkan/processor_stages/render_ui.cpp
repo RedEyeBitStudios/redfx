@@ -267,10 +267,10 @@ void ClassImpl::renderLayer_TextBoxes(VidRoot::VidWindows::VidWndInfo& info, GPG
 	for (auto& c : layer_info)
 	{
 		// TODO: Font must be not constant.
-		auto& character_data = std::get<GPGPU_Device_Vulkan::ResourceClasses::Resource_RedFX_Font>(*commons->retrieveResource( "Cutive Mono Regular")).characters_data[c.first];
+		auto& character_data = std::get<GPGPU_Device_Vulkan::ResourceClasses::Resource_RedFX_Font>(*commons->retrieveResource(c.resource)).characters_data[c.character];
 		vkCmdBindVertexBuffers(frame->cmd, 0, 1, &character_data.v_buffer, buffers_offsets.data());
-		vkCmdDraw(frame->cmd, character_data.v_count, c.second, 0, this->lastTextBoxIndex);
-		this->lastTextBoxIndex += c.second;
+		vkCmdDraw(frame->cmd, character_data.v_count, 1, 0, this->lastTextBoxIndex);
+		this->lastTextBoxIndex++;
 	}
 }
 void ClassImpl::renderLayer_ImageBoxes(VidRoot::VidWindows::VidWndInfo& info, GPGPU_Device_Vulkan* commons, GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp::UniformData_ImageBoxes&& layer, GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp::Info_ImageBoxes&& layer_info)
