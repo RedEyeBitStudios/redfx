@@ -47,7 +47,7 @@ void ClassImpl::cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElement
 
 	for (auto& box : std::views::values(pg.text_boxes))
 	{
-		if (box.mask & UI::BoxProperties::BoxMask::IS_ACTIVE)
+		if (box.mask & UI::BoxProperties::BoxMask::IS_ACTIVE && !box.text.empty())
 		{
 			const auto layer_id = pg.base_layer_id + box.layer_id;
 			const auto aspect = static_cast<std::float16_t>(info.mode.wh.y) / static_cast<std::float16_t>(info.mode.wh.x);
@@ -66,6 +66,9 @@ void ClassImpl::cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElement
 				}
 				else
 				{
+					std::vector<std::decay_t<decltype(resources)>::UniformData_TextBox> boxes_cache;
+					boxes_cache.reserve(box.text.length());
+
 					auto pos = box.position_px;
 					for (const auto utf32_character : converter.from_bytes(box.text.data()))
 					{
@@ -76,7 +79,7 @@ void ClassImpl::cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElement
 						{
 							next = character->width;
 
-							resources.layers_data[layer_id].text_boxes.push_back
+							boxes_cache.push_back
 							(
 								std::decay_t<decltype(resources)>::UniformData_TextBox
 								{
@@ -96,6 +99,17 @@ void ClassImpl::cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElement
 						}
 						pos.x += box.size * next * aspect;
 					}
+
+					if (box.mask & UI::BoxProperties::BoxMask::ALIGNMENT_CENTER)
+					{
+						const auto pos_difference = boxes_cache.back().offset.x - boxes_cache.front().offset.x;
+						const auto dif_to_apply = pos_difference / 2;
+						for (auto& entry : boxes_cache)
+						{
+							entry.offset.x -= dif_to_apply;
+						}
+					}
+					resources.layers_data[layer_id].text_boxes.append_range(std::span(boxes_cache));
 				}
 			}
 		}
