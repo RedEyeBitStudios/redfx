@@ -30,12 +30,21 @@ namespace nxcraft::intern::subsystems
 			ui16vec2 hi_v;
 			uint16_t image_index;
 		};
+		struct alignas(8) UniformData_BitmapBox
+		{
+			ui16vec2 lo_v;
+			ui16vec2 hi_v;
+			f16vec4 color_rgba;
+			uint16_t image_index;
+		};
 
 		using UniformData_ColorBoxes = std::vector<UniformData_ColorBox>;
 		using UniformData_TextBoxes = std::vector<UniformData_TextBox>;
 		using UniformData_ImageBoxes = std::vector<UniformData_ImageBox>;
+		using UniformData_BitmapBoxes = std::vector<UniformData_BitmapBox>;
 		using Info_TextBoxes = std::unordered_map<uint32_t, uint32_t>;
 		using Info_ImageBoxes = std::vector<std::string>;
+		using Info_BitmapBoxes = Info_ImageBoxes;
 		
 		struct UniformData
 		{
@@ -44,6 +53,8 @@ namespace nxcraft::intern::subsystems
 			Info_TextBoxes text_boxes_info;
 			UniformData_ImageBoxes image_boxes;
 			Info_ImageBoxes images_to_bind;
+			UniformData_BitmapBoxes bitmap_boxes;
+			Info_BitmapBoxes bitmaps_to_bind;
 		};
 
 		using LayersData = std::map<uint8_t, UniformData>;

@@ -74,7 +74,7 @@ void ClassImpl::submitQueue()
 		io_thread_size_summary += file_size;
 		unit_work.push_back(&resource_entry);
 
-		if (io_thread_size_summary > 131072 || entry == this->queue.back())
+		if (io_thread_size_summary > 134217728 || entry == this->queue.back())
 		{
 			workload.push_back(std::move(unit_work));			
 			io_thread_size_summary = 0;

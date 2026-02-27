@@ -180,6 +180,8 @@ ClassImpl::GPGPU_Device_Vulkan(const VkPhysicalDevice ph_dvc, nxcraft::err::Erro
 			additional_queue.handle = this->main_queue.handle;
 		}
 
+		nxcraft::Subsystems::getSubsystem_Logger().registerHeader(&this->processor_data, "SubsystemGPGPU::ResourceManager");
+
 		this->constructMemManager();
 		this->createProcessor();
 

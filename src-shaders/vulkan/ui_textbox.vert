@@ -31,5 +31,5 @@ void main()
 	const f16vec2 v_pos = ((raw_v_pos + (box_data.offset_px * registers.dimension_multiplier)) * f16vec2(2.0f) - f16vec2(1.0f));
 
 	gl_Position = vec4(v_pos, 0, 1.0f);
-	color_rgba = f16vec4(smoothstep(0.0f, 255.0f, vec4(box_data.color_rgba)));
+	color_rgba = box_data.color_rgba;
 }

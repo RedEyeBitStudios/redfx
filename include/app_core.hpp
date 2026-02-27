@@ -1,15 +1,16 @@
 #pragma once
-#include <string>
+#include <string_view>
 
 namespace nxcraft
 {
+	extern std::string_view app_executable_name;
+
 	class AppCore
 	{
 	public:
 		struct Globals
 		{
 			bool app_quit = false;
-			std::string app_executable_name;
 		};
 
 		Globals globs;

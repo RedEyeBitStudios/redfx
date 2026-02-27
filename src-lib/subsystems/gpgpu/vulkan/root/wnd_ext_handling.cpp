@@ -33,9 +33,11 @@ void ClassImpl::clearWindowExtension(GPGPU_WindowExtension* ext)
 		vkDestroyImage(primary_commons.dvc, f.images.resolve.image, nullptr);
 		vkDestroyImage(primary_commons.dvc, f.images.msaa.image, nullptr);
 		vkDestroyFence(primary_commons.dvc, f.cmd_fence, nullptr);
-		vkDestroyBuffer(primary_commons.dvc, f.box_color.uniform_buffer, nullptr);
-		vkDestroyBuffer(primary_commons.dvc, f.box_text.uniform_buffer, nullptr);
-		vkDestroyBuffer(primary_commons.dvc, f.box_image.uniform_buffer, nullptr);
+
+		for (auto& buf : std::span<std::decay_t<decltype(f)>::BoxBuffer>(&f.box_color, 4))
+		{
+			vkDestroyBuffer(primary_commons.dvc, buf.uniform_buffer, nullptr);
+		}
 		vkDestroyFramebuffer(primary_commons.dvc, f.framebuffer, nullptr);
 	}
 
@@ -122,28 +124,26 @@ void ClassImpl::makeWindowExtension(GPGPU_WindowExtension* ext)
 			.pQueueFamilyIndices = nullptr
 		};
 
-		vkCreateBuffer(commons.dvc, &buf_info, nullptr, &f.box_color.uniform_buffer);
-		vkCreateBuffer(commons.dvc, &buf_info, nullptr, &f.box_text.uniform_buffer);
-		vkCreateBuffer(commons.dvc, &buf_info, nullptr, &f.box_image.uniform_buffer);
-		buffers.push_back(&f.box_color.uniform_buffer);
-		buffers.push_back(&f.box_text.uniform_buffer);
-		buffers.push_back(&f.box_image.uniform_buffer);
+		for (auto& buf : std::span<std::decay_t<decltype(f)>::BoxBuffer>(&f.box_color, 4))
+		{
+			vkCreateBuffer(commons.dvc, &buf_info, nullptr, &buf.uniform_buffer);
+			buffers.push_back(&buf.uniform_buffer);	
+		}
 	}
 
 	wnd_ext->allocations.ui.constant_memory_blocks.uniform_buffer_device = this->primary_dvc->allocate_bda(buffers, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
 	for (auto& f : wnd_ext->frames.ui->frames)
 	{
-		VkBufferDeviceAddressInfoKHR addr_info
+		for (auto& buf : std::span<std::decay_t<decltype(f)>::BoxBuffer>(&f.box_color, 4))
 		{
-			.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
-			.buffer = f.box_color.uniform_buffer
-		};
-		f.box_color.uniform_buffer_address = nxcraft::intern::vk::vkGetBufferDeviceAddressKHR(commons.dvc, &addr_info);
-		addr_info.buffer = f.box_text.uniform_buffer;
-		f.box_text.uniform_buffer_address = nxcraft::intern::vk::vkGetBufferDeviceAddressKHR(commons.dvc, &addr_info);
-		addr_info.buffer = f.box_image.uniform_buffer;
-		f.box_image.uniform_buffer_address = nxcraft::intern::vk::vkGetBufferDeviceAddressKHR(commons.dvc, &addr_info);
+			VkBufferDeviceAddressInfoKHR addr_info
+			{
+				.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO_KHR,
+				.buffer = buf.uniform_buffer
+			};
+			buf.uniform_buffer_address = nxcraft::intern::vk::vkGetBufferDeviceAddressKHR(commons.dvc, &addr_info);
+		}
 	}
 }
 void ClassImpl::recreateSwapchain(VidRoot::VidWindows::VidWndInfo& info, GPGPU_WindowExtension_Vulkan* wnd_ext)

@@ -77,10 +77,8 @@ namespace nxcraft::intern::subsystems
 			enum class Format
 			{
 				BW8 = 1,
-				RGB8 = 3,
 				RGBA8 = 4,
 				BW16 = 1 + 4,
-				RGB16 = 3 + 4,
 				RGBA16 = 4 + 4
 			};
 		private:

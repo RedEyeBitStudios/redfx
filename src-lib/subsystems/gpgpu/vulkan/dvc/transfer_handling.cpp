@@ -2,7 +2,7 @@
 #include <subsystems.hpp>
 #include <algorithm>
 #include <type_traits>
-
+#include <cassert>
 
 using ClassImpl = nxcraft::intern::subsystems::GPGPU_Device_Vulkan;
 
@@ -121,8 +121,10 @@ void ClassImpl::submitTransfer()
 						};
 						auto& buffer = gpgpu_cache.characters_data[character.first].v_buffer;
 						gpgpu_cache.characters_data[character.first].v_count = character.second.vertices.size();
+
+						const auto ok = vkCreateBuffer(this->dvc, &buf_info, nullptr, &buffer);
+						assert(ok == VK_SUCCESS && "Failed to create buffer.");
 						
-						vkCreateBuffer(this->dvc, &buf_info, nullptr, &buffer);
 						bufs.push_back(&buffer);
 					}
 
@@ -130,23 +132,26 @@ void ClassImpl::submitTransfer()
 					auto mem_block_info = this->getMemBlockInfo(gpgpu_cache.mem_block);
 
 					uint64_t block_index = 0;
+					auto local_ptr = virtual_staging_buf;
+					auto local_offset = current_staging_offset;
 					for (auto& character : font->getCharacters())
 					{
-						memcpy(virtual_staging_buf, character.second.vertices.data(), std::span(character.second.vertices).size_bytes());
+						local_offset += mem_block_info.resources[block_index].bytes_offset;
+						local_ptr += mem_block_info.resources[block_index].bytes_offset;
+						memcpy(local_ptr, character.second.vertices.data(), std::span(character.second.vertices).size_bytes());
 
 						const VkBufferCopy copy_info
 						{
-							.srcOffset = current_staging_offset,
+							.srcOffset = local_offset,
 							.dstOffset = 0,
 							.size = std::span(character.second.vertices).size_bytes()
 						};
 
 						vkCmdCopyBuffer(selected_unit->cmd, selected_unit->staging_buffer, std::get<VkBuffer>(mem_block_info.resources[block_index].res), 1, &copy_info);
-
-						virtual_staging_buf += mem_block_info.resources[block_index].bytes_offset;
-						current_staging_offset += mem_block_info.resources[block_index].bytes_offset;
 						block_index++;
 					}
+					virtual_staging_buf += mem_block_info.size_summary;
+					current_staging_offset += mem_block_info.size_summary;
 					this->memory_manager_data.assets_gpu[asset_name.data()] = std::move(gpgpu_cache);
 				}
 				else if constexpr(std::is_same_v<T, ResourceManifestClasses::Manifest_RedFXUI>)
@@ -164,7 +169,6 @@ void ClassImpl::submitTransfer()
 					std::unordered_map<ImageFormat, VkFormat> formats
 					{
 						{ ImageFormat::BW8, VK_FORMAT_R8_UNORM },
-						{ ImageFormat::RGB8, VK_FORMAT_R8G8B8_UNORM },
 						{ ImageFormat::RGBA8, VK_FORMAT_R8G8B8A8_UNORM }
 					};
 
@@ -192,7 +196,10 @@ void ClassImpl::submitTransfer()
 						.initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED
 					};
 
-					vkCreateImage(this->dvc, &img_info, nullptr, &gpgpu_cache.image);
+					{
+						const auto ok = vkCreateImage(this->dvc, &img_info, nullptr, &gpgpu_cache.image);
+						assert(ok == VK_SUCCESS && "Failed to create image.");
+					}
 
 					gpgpu_cache.mem_block = this->allocate({ &gpgpu_cache.image }, {}, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
@@ -270,7 +277,10 @@ void ClassImpl::submitTransfer()
 							.layerCount = 1
 						}
 					};
-					vkCreateImageView(this->dvc, &view_info, nullptr, &gpgpu_cache.view);
+					{
+						const auto ok = vkCreateImageView(this->dvc, &view_info, nullptr, &gpgpu_cache.view);
+						assert(ok == VK_SUCCESS && "Failed to create image.");
+					}
 
 					this->memory_manager_data.assets_gpu[asset_name.data()] = std::move(gpgpu_cache);
 				}
@@ -301,6 +311,7 @@ void ClassImpl::submitTransfer()
 		.signalSemaphoreCount = 0,
 		.pSignalSemaphores = nullptr
 	};
-	vkQueueSubmit(this->transfer.queue.handle, 1, &submit_info, selected_unit->fence);
+	const auto submit_status = vkQueueSubmit(this->transfer.queue.handle, 1, &submit_info, selected_unit->fence);
+	assert(submit_status == VK_SUCCESS && "GPGPU transfer failed.");
 	nxcraft::Subsystems::LogRoot::Message(&this->transfer, std::format("Submitted {}.", reinterpret_cast<void*>(selected_unit)));
 }

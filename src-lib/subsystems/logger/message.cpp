@@ -98,6 +98,7 @@ ClassImpl::Message(const void* const address, std::string_view msg_content, Flag
 
 	if (flags & Flags::SHOW_MESSAGE_BOX)
 	{
+		return;
 #ifdef __linux__
 		std::string cmd;
 		if (critical_error_occured)

@@ -77,6 +77,7 @@ namespace nxcraft::intern::subsystems
 		BoxBuffer box_color;
 		BoxBuffer box_text;
 		BoxBuffer box_image;
+		BoxBuffer box_bitmap;
 
 		VkFence cmd_fence = VK_NULL_HANDLE;
 		VkFramebuffer framebuffer;

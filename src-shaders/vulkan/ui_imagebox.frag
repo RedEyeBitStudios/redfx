@@ -11,5 +11,5 @@ layout(location = 0) out vec4 color_attachment;
 
 void main()
 {
-	color_attachment = texture(images[0], vec2(texture_coords));
+	color_attachment = texture(images[uint(texture_id)], vec2(texture_coords));
 }

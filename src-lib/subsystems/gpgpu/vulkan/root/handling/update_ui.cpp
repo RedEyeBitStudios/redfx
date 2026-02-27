@@ -5,8 +5,6 @@
 #include "../../processor_stages/render_ui.hpp"
 
 #include "../../proc_stage_resources/renderui_cull_elements.hpp"
-//#include "../../processor_stages/render_ui_colorbox.hpp"
-//#include "../../proc_stage_resources/stage_ui_colorbox.hpp"
 
 using ClassImpl = nxcraft::intern::subsystems::GPGPU_RootVulkan;
 
@@ -63,43 +61,4 @@ void ClassImpl::updateUI(VidRoot::VidWindows::VidWndInfo& info)
 			wnd_ext->frames.ui->current_frame_id = wnd_ext->frames.ui->increment();
 		}
 	}
-	
-	
-
-	/*
-	if (wnd_ext->frames.ui->recorded.empty())
-	{
-		auto next_frame = &wnd_ext->frames.ui->frames[wnd_ext->frames.ui->increment()];
-
-		const VkCommandBufferBeginInfo cmd_info
-		{
-			.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-			.pNext = nullptr,
-			.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-			.pInheritanceInfo = nullptr
-		};
-		vkBeginCommandBuffer(next_frame->cmd, &cmd_info);
-
-		GPGPU_ProcessorStage_RenderUI_ColorBox().process(info, this->primary_dvc->getProcessorStageData<GPGPU_ProcessorStageResources_RenderUI_ColorBox>(), this->primary_dvc.get());
-
-		vkEndCommandBuffer(next_frame->cmd);
-
-		wnd_ext->frames.ui->recorded.push_back(next_frame);
-	}
-
-	if (vkGetFenceStatus(commons.dvc, frame->cmd_fence) == VK_SUCCESS)
-	{
-		// If fence is signaled, that means frame is ready. Then submit next cmd is possible.
-		wnd_ext->frames.ui->current_frame_id = wnd_ext->frames.ui->increment();
-
-		if (!wnd_ext->frames.ui->recorded.empty())
-		{
-			auto frame_to_submit = wnd_ext->frames.ui->recorded.front();			
-
-			
-
-			wnd_ext->frames.ui->recorded.erase(wnd_ext->frames.ui->recorded.begin());
-		}
-	}
-		*/
 }

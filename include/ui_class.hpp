@@ -70,10 +70,15 @@ namespace nxcraft
 		{
 
 		};
+		struct BitmapBox : public BoxProps::PositionPixel, BoxProps::SizePixel, BoxProps::LayersStack, BoxProps::Mask, BoxProps::Resource, BoxProps::ColorRGBA
+		{
+
+		};
 
 		std::unordered_map<std::string, ColorBox> boxes;
 		std::unordered_map<std::string, TextBox> text_boxes;
 		std::unordered_map<std::string, ImageBox> image_boxes;
+		std::unordered_map<std::string, BitmapBox> bitmap_boxes;
 		uint8_t base_layer_id = 0;
 
 		UI(std::string_view page_name);

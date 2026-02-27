@@ -9,9 +9,11 @@ namespace nxcraft::intern::subsystems
 	class GPGPU_ProcessorStage_RenderUI_CullElements : public GPGPU_ProcessorStage_Vulkan
 	{
 	private:
+		f16vec4 decodeColorABGR(const uint32_t rgba);
 		void cullColorBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp& resources, UI& pg);
 		void cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp& resources, UI& pg, GPGPU_Device_Vulkan* commons, VidRoot::VidWindows::VidWndInfo& info);
 		void cullImageBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp& resources, UI& pg, GPGPU_Device_Vulkan* commons);
+		void cullBitmapBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp& resources, UI& pg, GPGPU_Device_Vulkan* commons);
 	public:
 		GPGPU_ProcessorStage_RenderUI_CullElements() = default;
 		virtual ~GPGPU_ProcessorStage_RenderUI_CullElements() = default;

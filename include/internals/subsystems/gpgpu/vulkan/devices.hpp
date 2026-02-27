@@ -6,6 +6,7 @@
 #include "../../../bases/gpgpu/root_base.hpp"
 #include <concepts>
 #include <thread>
+#include <subsystems.hpp>
 
 namespace nxcraft::intern::subsystems
 {
@@ -84,10 +85,12 @@ namespace nxcraft::intern::subsystems
 		VkDevice dvc;
 
 		std::unordered_map<std::string_view, std::unique_ptr<GPGPU_ProcessorStageResources>> processor_data;
+		
 
 		template<typename T, typename... AdditionalArgs>
-		void makeProcessor(AdditionalArgs... args) requires(std::is_base_of_v<GPGPU_ProcessorStageResources, T>)
+		void makeProcessor(std::string name, AdditionalArgs... args) requires(std::is_base_of_v<GPGPU_ProcessorStageResources, T>)
 		{
+			nxcraft::Subsystems::LogRoot::Message(&this->memory_manager_data, std::format("Processor stage resources creation: {}", name));
 			this->processor_data[typeid(T).name()] = std::move(std::make_unique<T>(this->getCommons(), args...));
 		}
 

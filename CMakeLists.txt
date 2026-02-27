@@ -1,33 +1,25 @@
 cmake_minimum_required(VERSION 3.24)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-if (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "x86_64")
-    add_compile_options(-mf16c -mavx -mfma -msse4)
-elseif (${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
-endif()
-
-file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/build)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/shaders/vulkan)
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/tools)
+file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
+
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
 set(CMAKE_CONFIGURATION_TYPES Debug;Release)
-set(CMAKE_DEBUG_POSTFIX -dev)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 option(MEMORY_TRACKING "Enables address sanitizer." OFF)
 
-project(nxc-framework LANGUAGES CXX)
-
+project(redfx_engine LANGUAGES CXX VERSION 0.0.1)
+string(TOLOWER "${CMAKE_SYSTEM_NAME}-${CMAKE_SYSTEM_PROCESSOR}" PLATFORM_SUFFIX)
+set(CMAKE_DEBUG_POSTFIX "-${PROJECT_VERSION}-dev-${PLATFORM_SUFFIX}")
+set(CMAKE_RELEASE_POSTFIX "-${PROJECT_VERSION}-${PLATFORM_SUFFIX}")
+ 
 find_package(Vulkan REQUIRED)
-
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
-    add_compile_definitions(NXC_TARGET_DESKTOP=1)
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-    add_compile_definitions(NXC_TARGET_DESKTOP=1)
-elseif(${CMAKE_SYSTEM_NAME} STREQUAL "Android")
-endif()
 
 add_library(${PROJECT_NAME} STATIC)
 
@@ -37,6 +29,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 message(STATUS "MEMORY_TRACKING: ${MEMORY_TRACKING}")
 message(STATUS "TARGET ARCHITECTURE: ${CMAKE_SYSTEM_PROCESSOR}")
+message(STATUS "PROJECT VERSION: ${CMAKE_PROJECT_VERSION}")
 
 set(SRC_LIB_GPGPU
     "src-lib/err/gpgpu/vulkan/logical_device_creation_failed.cpp"
@@ -60,6 +53,7 @@ set(SRC_LIB_GPGPU
     "src-lib/subsystems/gpgpu/vulkan/root/handling/proc_stage.cpp"
     "src-lib/subsystems/gpgpu/vulkan/processor_stages/renderui_cull_elements.cpp"
     "src-lib/subsystems/gpgpu/vulkan/processor_stages/render_ui.cpp"
+    "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_bitmapbox.cpp"
     "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_imagebox.cpp"
     "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_colorbox.cpp"
     "src-lib/subsystems/gpgpu/vulkan/proc_stage_resources/renderui_textbox.cpp"
@@ -104,12 +98,8 @@ target_sources(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
     "SDL3"
     "vulkan"
-    "freetype"
     "tinyxml2"
     "ttf2mesh"
-)
-target_compile_definitions(${PROJECT_NAME} PRIVATE
-    NXC_APP_NAME="./${PROJECT_NAME}"
 )
 
 if (${MEMORY_TRACKING})
@@ -122,24 +112,17 @@ if (${MEMORY_TRACKING})
     ) 
 endif()
 
-set(VULKAN_SHADER_SOURCES 
-    "ui_colorbox.vert"
-    "ui_colorbox.frag"
-    "ui_textbox.vert"
-    "ui_textbox.frag"
-    "ui_imagebox.vert"
-    "ui_imagebox.frag"
-)
+file(GLOB_RECURSE VULKAN_SHADER_SOURCES "${CMAKE_SOURCE_DIR}/src-shaders/vulkan/*.vert" "${CMAKE_SOURCE_DIR}/src-shaders/vulkan/*.frag")
 
 message(STATUS "Compiling Vulkan shaders")
 foreach(SHADER_ENTRY ${VULKAN_SHADER_SOURCES})
+    cmake_path(GET SHADER_ENTRY FILENAME FILE_NAME)
     execute_process(
-        COMMAND glslangValidator --target-env vulkan1.1 "${CMAKE_SOURCE_DIR}/src-shaders/vulkan/${SHADER_ENTRY}" -o "${SHADER_ENTRY}.spv"
+        COMMAND glslangValidator --target-env vulkan1.1 "${SHADER_ENTRY}" -o "${FILE_NAME}.spv"
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/shaders/vulkan
     )
 endforeach()
 
-#add_subdirectory(${CMAKE_SOURCE_DIR}/src-tools)
 # clear && cmake -B build -G "Ninja Multi-Config" -DCMAKE_SYSTEM_PROCESSOR=x86_64 && ninja -C build -f build-Debug.ninja && ninja -C build -f build-Release.ninja
 
 # ttf2mesh git https://github.com/fetisov/ttf2mesh.git

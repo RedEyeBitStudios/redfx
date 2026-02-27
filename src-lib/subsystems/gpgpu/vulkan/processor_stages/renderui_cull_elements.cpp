@@ -16,6 +16,7 @@ void ClassImpl::process(VidRoot::VidWindows::VidWndInfo& info, GPGPU_Device_Vulk
 		this->cullColorBoxes(cull_result, *pg);
 		this->cullTextBoxes(cull_result, *pg, commons, info);
 		this->cullImageBoxes(cull_result, *pg, commons);
+		this->cullBitmapBoxes(cull_result, *pg, commons);
 	}
 }
 void ClassImpl::cullColorBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp& resources, UI& pg)
@@ -24,7 +25,6 @@ void ClassImpl::cullColorBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElemen
 	{
 		if (box.mask & UI::BoxProperties::BoxMask::IS_ACTIVE)
 		{
-			const auto backward_rgba = *reinterpret_cast<const ui8vec4*>(&box.color_rgba);
 			const auto layer_id = pg.base_layer_id + box.layer_id;
 
 			resources.layers_data[layer_id].color_boxes.push_back
@@ -33,7 +33,7 @@ void ClassImpl::cullColorBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElemen
 				{
 					.lo_v = box.position_px,
 					.hi_v = box.position_px + box.wh_px,
-					.color_rgba = f16vec4(backward_rgba.w, backward_rgba.z, backward_rgba.y, backward_rgba.x),
+					.color_rgba = this->decodeColorABGR(box.color_rgba),
 				}
 			);
 		}
@@ -49,7 +49,6 @@ void ClassImpl::cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElement
 	{
 		if (box.mask & UI::BoxProperties::BoxMask::IS_ACTIVE)
 		{
-			const auto backward_rgba = *reinterpret_cast<const ui8vec4*>(&box.color_rgba);
 			const auto layer_id = pg.base_layer_id + box.layer_id;
 			const auto aspect = static_cast<std::float16_t>(info.mode.wh.y) / static_cast<std::float16_t>(info.mode.wh.x);
 
@@ -81,7 +80,7 @@ void ClassImpl::cullTextBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElement
 							(
 								std::decay_t<decltype(resources)>::UniformData_TextBox
 								{
-									.color_rgba = f16vec4(backward_rgba.w, backward_rgba.z, backward_rgba.y, backward_rgba.x),
+									.color_rgba = this->decodeColorABGR(box.color_rgba),
 									.offset = static_cast<f16vec2>(pos),
 									.size_px = static_cast<std::float16_t>(box.size)
 								}
@@ -112,7 +111,7 @@ void ClassImpl::cullImageBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElemen
 			continue;
 		}
 		if (box.mask & UI::BoxProperties::BoxMask::IS_ACTIVE)
-		{	
+		{
 			const auto layer_id = pg.base_layer_id + box.layer_id;
 
 			auto& images_to_bind = resources.layers_data[layer_id].images_to_bind;
@@ -126,6 +125,8 @@ void ClassImpl::cullImageBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElemen
 			const auto resource_resolution = static_cast<f16vec2>(resource->retrieveResolution());
 			const auto aspect = resource_resolution.y / resource_resolution.x;
 			const auto height = static_cast<uint16_t>(box.size * aspect);
+			
+			assert(resource->retrieveFormat() == Subsystems::ResourcesManagerRoot::ResourceData_Image::Format::RGBA8 && "Image box accepts only RGBA format.");			
 
 			const auto iterator = std::ranges::find(images_to_bind, box.resource);
 			const uint16_t index = static_cast<uint16_t>(iterator.base() - images_to_bind.data());
@@ -141,4 +142,55 @@ void ClassImpl::cullImageBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElemen
 			);
 		}
 	}
+}
+void ClassImpl::cullBitmapBoxes(GPGPU_ProcessorStageResources_RenderUI_CullElementsTmp& resources, UI& pg, GPGPU_Device_Vulkan* commons)
+{
+	for (auto& box : std::views::values(pg.bitmap_boxes))
+	{
+		const Subsystems::ResourcesManagerRoot::ResourceCache* res = Subsystems::getSubsystem_ResourcesManager().retrieveResourceView(box.resource);
+		const auto gpgpu_res = commons->retrieveResource(box.resource);
+
+		if (res->data == nullptr || gpgpu_res == nullptr)
+		{
+			commons->addTransferQueue(box.resource);
+			continue;
+		}
+		if (box.mask & UI::BoxProperties::BoxMask::IS_ACTIVE)
+		{
+			const auto layer_id = pg.base_layer_id + box.layer_id;
+
+			auto& images_to_bind = resources.layers_data[layer_id].bitmaps_to_bind;
+
+			if (!std::ranges::contains(images_to_bind, box.resource))
+			{
+				images_to_bind.push_back(box.resource);
+			}
+			
+			const auto resource = static_cast<const Subsystems::ResourcesManagerRoot::ResourceData_Image*>(res->data.get());
+			const auto resource_resolution = static_cast<f16vec2>(resource->retrieveResolution());
+			const auto aspect = resource_resolution.y / resource_resolution.x;
+			const auto height = static_cast<uint16_t>(box.size * aspect);
+			
+			assert(resource->retrieveFormat() == Subsystems::ResourcesManagerRoot::ResourceData_Image::Format::BW8 && "Bitmap box accepts only R format.");			
+
+			const auto iterator = std::ranges::find(images_to_bind, box.resource);
+			const uint16_t index = static_cast<uint16_t>(iterator.base() - images_to_bind.data());
+			
+			resources.layers_data[layer_id].bitmap_boxes.push_back
+			(
+				std::decay_t<decltype(resources)>::UniformData_BitmapBox
+				{
+					.lo_v = box.position_px,
+					.hi_v = box.position_px + ui16vec2(box.size, height),
+					.color_rgba = this->decodeColorABGR(box.color_rgba),
+					.image_index = index
+				}
+			);
+		}
+	}
+}
+nexora_utils::math::f16vec4 ClassImpl::decodeColorABGR(const uint32_t rgba)
+{
+	const auto backward_rgba = static_cast<f16vec4>(*reinterpret_cast<const ui8vec4*>(&rgba));
+	return f16vec4(backward_rgba.w, backward_rgba.z, backward_rgba.y, backward_rgba.x) / f16vec4(255.0f16);
 }
